@@ -207,7 +207,6 @@ class ErrClass<B> implements Err<B> {
   }
 }
 
-// TODO: Implement all instance methods
 export interface StaticResult {
   /**
    * Combines an array of results into one.
@@ -261,7 +260,7 @@ export interface StaticResult {
 export const result: StaticResult = {
   // 'static' methods
   all<A, B>(results: Result<A, B>[]) {
-    let values: A[] = [];
+    const values: A[] = [];
 
     for (const result of results)
       if (result.ok) values.push(result.val);
@@ -274,7 +273,7 @@ export const result: StaticResult = {
     else return result;
   },
   values<A, B>(results: Result<A, B>[]): A[] {
-    let values: A[] = [];
+    const values: A[] = [];
 
     for (const result of results) if (result.ok) values.push(result.val);
 

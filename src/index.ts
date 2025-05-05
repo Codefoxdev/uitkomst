@@ -1,2 +1,2 @@
-export type { Result, StaticResult } from "./results";
-export { Ok, Err, result } from "./results";
+export type { Result, StaticResult } from "./result";
+export { Ok, Err, result } from "./result";
