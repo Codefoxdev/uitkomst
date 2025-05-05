@@ -20,9 +20,7 @@
     "enabled": true,
     "rules": {
       "style": {
-        "noUselessElse": "off",
-        "noParameterAssign": "off",
-        "noNonNullAssertion": "info"
+        "noUselessElse": "off"
       },
       "suspicious": {
         "noAssignInExpressions": "off"
