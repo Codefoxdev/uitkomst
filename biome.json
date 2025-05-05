@@ -24,6 +24,9 @@
       },
       "suspicious": {
         "noAssignInExpressions": "off"
+      },
+      "correctness": {
+        "useYield": "off"
       }
     }
   }

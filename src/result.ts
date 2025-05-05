@@ -69,9 +69,11 @@ interface BaseResult<A, B> {
    * Extracts the `Err` value, returning the `fallback` argument if the result is an `Ok`.
    */
   unwrapErr(fallback: B): B;
+
+  [Symbol.iterator](): Generator<Result<A, B>, A, A>;
 }
 
-interface Ok<A> extends BaseResult<A, never> {
+export interface Ok<A> extends BaseResult<A, never> {
   readonly val: A;
   readonly ok: true;
   readonly err: false;
@@ -97,6 +99,8 @@ interface Ok<A> extends BaseResult<A, never> {
    * @override Optionally provides `Err` type hints, so typescript simplifies to `Result<A, B>` instead of `Ok<A> | Err<B>`.
    */
   replace<C, B>(val: C): Result<C, B>;
+
+  [Symbol.iterator](): Generator<Ok<A>, A, A>;
 }
 
 class OkClass<A> implements Ok<A> {
@@ -135,9 +139,14 @@ class OkClass<A> implements Ok<A> {
   unwrapErr<B>(fallback: B) {
     return fallback;
   }
+
+  [Symbol.iterator] = function* (this: OkClass<A>) {
+    yield this;
+    return this.val;
+  };
 }
 
-interface Err<B> extends BaseResult<never, B> {
+export interface Err<B> extends BaseResult<never, B> {
   readonly val: B;
   readonly ok: false;
   readonly err: true;
@@ -158,6 +167,8 @@ interface Err<B> extends BaseResult<never, B> {
    * @override Optionally provides `Ok` type hints, so typescript simplifies to `Result<A, B>` instead of `Ok<A> | Err<B>`.
    */
   replaceErr<A, C>(val: C): Result<A, C>;
+
+  [Symbol.iterator](): Generator<Err<B>, never, unknown>;
 }
 
 class ErrClass<B> implements Err<B> {
@@ -205,6 +216,13 @@ class ErrClass<B> implements Err<B> {
   replaceErr<C>(val: C) {
     return new ErrClass(val);
   }
+
+  [Symbol.iterator] = function* (this: ErrClass<B>) {
+    yield this;
+    throw new Error(
+      "Err value iterator fully consumed. This iterator is designed to yield its error value and then terminate execution flow.",
+    );
+  };
 }
 
 export interface StaticResult {
@@ -253,6 +271,13 @@ export interface StaticResult {
    */
   unwrapBoth<A>(result: Result<A, A>): A;
 
+  /**
+   * Checks if the given value is a result, a.k.a. an {@link Ok} or {@link Err}.
+   */
+  isResult(result: unknown): result is Result<unknown, unknown>;
+  isOk(result: unknown): result is Ok<unknown>;
+  isErr(result: unknown): result is Err<unknown>;
+
   // instance methods
   //lazyOr<A, B>(result: Result<A, B>, callback: () => Result<A, B>): Result<A, B>;
 }
@@ -281,6 +306,15 @@ export const result: StaticResult = {
   },
   unwrapBoth<A>(result: Result<A, A>): A {
     return result.val;
+  },
+  isResult(result: unknown): result is Result<unknown, unknown> {
+    return this.isOk(result) || this.isErr(result);
+  },
+  isOk(result: unknown): result is Ok<unknown> {
+    return result instanceof OkClass;
+  },
+  isErr(result: unknown): result is Err<unknown> {
+    return result instanceof ErrClass;
   },
   // instance methods
 };

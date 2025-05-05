@@ -12,7 +12,8 @@
   },
   "scripts": {
     "build": "unbuild",
-    "lint": "biome check"
+    "lint": "biome check",
+    "tsc": "tsc"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
