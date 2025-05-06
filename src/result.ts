@@ -1,3 +1,5 @@
+import type { Yields } from "./types";
+
 export const Ok = <A>(val: A): Ok<A> => new OkClass(val);
 export const Err = <B>(val: B): Err<B> => new ErrClass(val);
 
@@ -8,7 +10,7 @@ export const Err = <B>(val: B): Err<B> => new ErrClass(val);
  */
 export type Result<A, B> = Ok<A> | Err<B>;
 
-interface BaseResult<A, B> {
+interface BaseResult<A, B> extends Yields<Result<A, B>, A> {
   readonly val: A | B;
   readonly ok: boolean;
   readonly err: boolean;
@@ -69,8 +71,6 @@ interface BaseResult<A, B> {
    * Extracts the `Err` value, returning the `fallback` argument if the result is an `Ok`.
    */
   unwrapErr(fallback: B): B;
-
-  [Symbol.iterator](): Generator<Result<A, B>, A, A>;
 }
 
 export interface Ok<A> extends BaseResult<A, never> {
@@ -99,8 +99,6 @@ export interface Ok<A> extends BaseResult<A, never> {
    * @override Optionally provides `Err` type hints, so typescript simplifies to `Result<A, B>` instead of `Ok<A> | Err<B>`.
    */
   replace<C, B>(val: C): Result<C, B>;
-
-  [Symbol.iterator](): Generator<Ok<A>, A, A>;
 }
 
 class OkClass<A> implements Ok<A> {
@@ -167,8 +165,6 @@ export interface Err<B> extends BaseResult<never, B> {
    * @override Optionally provides `Ok` type hints, so typescript simplifies to `Result<A, B>` instead of `Ok<A> | Err<B>`.
    */
   replaceErr<A, C>(val: C): Result<A, C>;
-
-  [Symbol.iterator](): Generator<Err<B>, never, unknown>;
 }
 
 class ErrClass<B> implements Err<B> {
@@ -270,13 +266,33 @@ export interface StaticResult {
    ```
    */
   unwrapBoth<A>(result: Result<A, A>): A;
-
   /**
    * Checks if the given value is a result, a.k.a. an {@link Ok} or {@link Err}.
    */
   isResult(result: unknown): result is Result<unknown, unknown>;
+  /**
+   * Checks if the given value is an {@link Ok}
+   */
   isOk(result: unknown): result is Ok<unknown>;
+  /**
+   * Checks if the given value is an {@link Err}
+   */
   isErr(result: unknown): result is Err<unknown>;
+  /**
+   * Wraps a function that may throw an error, into a result.
+   * If you know what the error type is, you can specify it as the second generic parameter, by default it is the default `Error` type.
+   ```ts
+   result.wrap(() => 1)
+   // -> Ok(1)
+   result.wrap(() => { throw new Error('error') })
+   // -> Err(Error('error'))
+   ```
+   */
+  wrap<A, E = Error>(callback: () => A): Result<A, E>;
+  /**
+   * An async version of `result.wrap`.
+   */
+  wrapAsync<A, E = Error>(callback: () => Promise<A>): Promise<Result<A, E>>;
 
   // instance methods
   //lazyOr<A, B>(result: Result<A, B>, callback: () => Result<A, B>): Result<A, B>;
@@ -315,6 +331,23 @@ export const result: StaticResult = {
   },
   isErr(result: unknown): result is Err<unknown> {
     return result instanceof ErrClass;
+  },
+  wrap<A, E = Error>(callback: () => A): Result<A, E> {
+    try {
+      return Ok(callback());
+    } catch (error) {
+      return Err(error as E);
+    }
+  },
+  async wrapAsync<A, E = Error>(
+    callback: () => Promise<A>,
+  ): Promise<Result<A, E>> {
+    try {
+      const value = await callback();
+      return Ok(value);
+    } catch (error) {
+      return Err(error as E);
+    }
   },
   // instance methods
 };
