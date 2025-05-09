@@ -226,71 +226,125 @@ export interface StaticResult {
    * Combines an array of results into one.
    * If all results are `Ok`, returns an `Ok` containing an array of their values.
    * If any result is `Err`, returns the first `Err`.
-   ```ts
-   result.all([Ok(1), Ok(2), Ok(3)])
-   // -> Ok([1, 2, 3])
-   result.all([Err("first"), Ok(2), Err("second")])
-   // -> Err("first")
-   ```
+   *
+   * @param results The array of results to combine.
+   * @returns A result containing an array of all the {@link Ok} values, or first error in the results array.
+   *
+   * @example
+   * ```ts
+   * result.all([Ok(1), Ok(2), Ok(3)])
+   * // -> Ok([1, 2, 3])
+   * result.all([Err("first"), Ok(2), Err("second")])
+   * // -> Err("first")
+   * ```
    */
   all<A, B>(results: Result<A, B>[]): Result<A[], B>;
   /**
    * Flattens a nested result into a single result.
-   ```ts
-   result.flatten(Ok(Ok(1)))
-   // -> Ok(1)
-   result.flatten(Ok(Err("")))
-   // -> Err("")
-   result.flatten(Err(""))
-   // -> Err("")
+   *
+   * @param result The nested result to flatten.
+   * @returns The flattened result.
+   *
+   * @example
+   * ```ts
+   * result.flatten(Ok(Ok(1)))
+   * // -> Ok(1)
+   * result.flatten(Ok(Err("")))
+   * // -> Err("")
+   * result.flatten(Err(""))
+   * // -> Err("")
    ```
    */
   flatten<A, B>(result: Result<Result<A, B>, B>): Result<A, B>;
   /**
    * Given an array of results, returns an array containing all `Ok` values.
    * The length of the array is not necessarily equal to the length of the `results` array.
-   ```ts
-   result.values([Ok(1), Err("error"), Ok(3)])
-   // -> [1, 3]
-   ```
+   *
+   * @param results The array of results, you want to get the values from.
+   * @returns An array containing all {@link Ok} values from the results array, this array isn't guaranteed to be the same length as the results parameter. As it doesn't return {@link Err} values.
+   *
+   * @example
+   * ```ts
+   * result.values([Ok(1), Err("error"), Ok(3)])
+   * // -> [1, 3]
+   * ```
    */
   values<A, B>(results: Result<A, B>[]): A[];
   /**
    * This method is the same as getting the value of a result, using the `Result.val` property,
    * however this ensures type safety by required the type of the `Ok` value to be the same as the type of the `Err` value.
-   ```ts
-   result.values(Ok(1))
-   // -> 1
-   result.values(Err(2))
-   // -> 2
-   ```
+   *
+   * @param result The result to unwrap
+   * @returns The inner value of the result
+   *
+   * @example
+   * ```ts
+   * result.values(Ok(1))
+   * // -> 1
+   * result.values(Err(2))
+   * // -> 2
+   * ```
    */
   unwrapBoth<A>(result: Result<A, A>): A;
   /**
+   * The same as `result.unwrapBoth`, but this one doesn't require the {@link Ok} and {@link Err} values to be of the same type.
+   *
+   * @param result The result to unwrap
+   * @returns The inner value of the result
+   */
+  unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B;
+  /**
    * Checks if the given value is a result, a.k.a. an {@link Ok} or {@link Err}.
+   *
+   * @param result The value to check.
+   * @returns A boolean indicating if the value is a {@link Result},
    */
   isResult(result: unknown): result is Result<unknown, unknown>;
   /**
-   * Checks if the given value is an {@link Ok}
+   * Checks if the given value is an {@link Ok},
+   *
+   * @param result The value to check.
+   * @returns A boolean indicating if the value is an {@link Ok}.
    */
   isOk(result: unknown): result is Ok<unknown>;
   /**
-   * Checks if the given value is an {@link Err}
+   * Checks if the given value is an {@link Err}.
+   *
+   * @param result The value to check.
+   * @returns A boolean indicating if the value is an {@link Err}.
    */
   isErr(result: unknown): result is Err<unknown>;
   /**
    * Wraps a function that may throw an error, into a result.
    * If you know what the error type is, you can specify it as the second generic parameter, by default it is the default `Error` type.
-   ```ts
-   result.wrap(() => 1)
-   // -> Ok(1)
-   result.wrap(() => { throw new Error('error') })
-   // -> Err(Error('error'))
-   ```
+   *
+   * @param callback The function that should be wrapped.
+   * @returns A result containing either they result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}.
+   *
+   * @example
+   * ```ts
+   * result.wrap(() => 1)
+   * // -> Ok(1)
+   * result.wrap(() => { throw new Error('error') })
+   * // -> Err(Error('error'))
+   * ```
    */
   wrap<A, E = Error>(callback: () => A): Result<A, E>;
   /**
    * An async version of `result.wrap`.
+   *
+   * @param callback The function that should be wrapped.
+   * @returns A result containing either they result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}.
+   *
+   * @example
+   * ```ts
+   * result.wrapAsync(() => Promise.resolve(1))
+   * // -> Promise<Ok(1)>
+   * result.wrapAsync(() => Promise.reject(new Error('error')))
+   * // -> Promise<Err(Error('error'))>
+   * result.wrap(() => { throw new Error('error') })
+   * // -> Promise<Err(Error('error'))>
+   * `
    */
   wrapAsync<A, E = Error>(callback: () => Promise<A>): Promise<Result<A, E>>;
 
@@ -323,6 +377,9 @@ export const result: StaticResult = {
   unwrapBoth<A>(result: Result<A, A>): A {
     return result.val;
   },
+  unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B {
+    return result.val;
+  },
   isResult(result: unknown): result is Result<unknown, unknown> {
     return this.isOk(result) || this.isErr(result);
   },
@@ -343,8 +400,12 @@ export const result: StaticResult = {
     callback: () => Promise<A>,
   ): Promise<Result<A, E>> {
     try {
-      const value = await callback();
-      return Ok(value);
+      return new Promise((resolve) => {
+        callback().then(
+          (v) => resolve(Ok(v)),
+          (e) => resolve(Err(e)),
+        );
+      });
     } catch (error) {
       return Err(error as E);
     }
