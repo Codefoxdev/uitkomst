@@ -24,3 +24,4 @@
 
 - tap
 - tapErr
+- toPair

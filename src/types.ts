@@ -4,6 +4,8 @@ export interface Yields<T, R> {
   [Symbol.iterator](): Generator<T, R, never>;
 }
 
+export type Pair<A, B> = [A, B];
+
 /**
  * Extracts the {@link Ok} value out of a result type.
  *

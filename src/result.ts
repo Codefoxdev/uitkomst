@@ -1,4 +1,4 @@
-import type { Yields } from "./types";
+import type { Pair, Yields } from "./types";
 
 export const Ok = <A>(val: A): Ok<A> => new OkClass(val);
 export const Err = <B>(val: B): Err<B> => new ErrClass(val);
@@ -53,6 +53,7 @@ interface BaseResult<A, B> extends Yields<Result<A, B>, A> {
    * This doesn't modify the result, if you want to modify the `Err` value, use `mapErr` instead.
    */
   tapErr(callback: (val: B) => void): this;
+  toPair(): Pair<A | null, B | null>;
   /**
    * Updates this `Ok` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Ok` with an `Err`.)
    * If this is an `Err` rather than an `Ok`, the function is not called and the original `Err` is returned.
@@ -93,6 +94,7 @@ export interface Ok<A> extends BaseResult<A, never> {
    * @override Optionally provides `Err` type hints, so typescript simplifies to `Result<A, B>` instead of `Ok<A> | Err<B>`.
    */
   map<C, B>(callback: (val: A) => C): Result<C, B>;
+  toPair(): Pair<A, null>;
   try<C, B>(callback: (val: A) => Result<C, B>): Result<C, B>;
   replace<C>(val: C): Ok<C>;
   /**
@@ -124,6 +126,10 @@ class OkClass<A> implements Ok<A> {
 
   map<C extends A>(callback: (val: A) => C): Ok<C> {
     return new OkClass(callback(this.val));
+  }
+
+  toPair(): Pair<A, null> {
+    return [this.val, null];
   }
 
   try<C, B>(callback: (val: A) => Result<C, B>) {
@@ -165,6 +171,7 @@ export interface Err<B> extends BaseResult<never, B> {
    * @override Optionally provides `Ok` type hints, so typescript simplifies to `Result<A, B>` instead of `Ok<A> | Err<B>`.
    */
   replaceErr<A, C>(val: C): Result<A, C>;
+  toPair(): Pair<null, B>;
 }
 
 class ErrClass<B> implements Err<B> {
@@ -211,6 +218,10 @@ class ErrClass<B> implements Err<B> {
 
   replaceErr<C>(val: C) {
     return new ErrClass(val);
+  }
+
+  toPair(): Pair<null, B> {
+    return [null, this.val];
   }
 
   [Symbol.iterator] = function* (this: ErrClass<B>) {
