@@ -268,19 +268,41 @@ export interface StaticResult {
    */
   flatten<A, B>(result: Result<Result<A, B>, B>): Result<A, B>;
   /**
-   * Given an array of results, returns an array containing all `Ok` values.
-   * The length of the array is not necessarily equal to the length of the `results` array.
+   * Checks if the given value is a result, a.k.a. an {@link Ok} or {@link Err}.
    *
-   * @param results The array of results, you want to get the values from.
-   * @returns An array containing all {@link Ok} values from the results array, this array isn't guaranteed to be the same length as the results parameter. As it doesn't return {@link Err} values.
+   * @param result The value to check.
+   * @returns A boolean indicating if the value is a {@link Result},
+   */
+  isResult(result: unknown): result is Result<unknown, unknown>;
+  /**
+   * Checks if the given value is an {@link Ok},
+   *
+   * @param result The value to check.
+   * @returns A boolean indicating if the value is an {@link Ok}.
+   */
+  isOk(result: unknown): result is Ok<unknown>;
+  /**
+   * Checks if the given value is an {@link Err}.
+   *
+   * @param result The value to check.
+   * @returns A boolean indicating if the value is an {@link Err}.
+   */
+  isErr(result: unknown): result is Err<unknown>;
+  /**
+   * Given an array of results, returns a pair of arrays containing the `Ok` and `Err` values respectively.
+   * The lengths of the arrays are not necessarily equal.
+   * Note that this implementation is different from the one in Gleam, as that one returns the values in reverse order.
+   *
+   * @param results The array of results to partition.
+   * @returns A pair of arrays containing the `Ok` and `Err` values respectively.
    *
    * @example
    * ```ts
-   * result.values([Ok(1), Err("error"), Ok(3)])
-   * // -> [1, 3]
+   * result.partition([Ok(1), Error("a"), Error("b"), Ok(2)])
+   * // -> [[1, 2], ["a", "b"]]
    * ```
    */
-  values<A, B>(results: Result<A, B>[]): A[];
+  partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]>;
   /**
    * This method is the same as getting the value of a result, using the `Result.val` property,
    * however this ensures type safety by required the type of the `Ok` value to be the same as the type of the `Err` value.
@@ -305,26 +327,19 @@ export interface StaticResult {
    */
   unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B;
   /**
-   * Checks if the given value is a result, a.k.a. an {@link Ok} or {@link Err}.
+   * Given an array of results, returns an array containing all `Ok` values.
+   * The length of the array is not necessarily equal to the length of the `results` array.
    *
-   * @param result The value to check.
-   * @returns A boolean indicating if the value is a {@link Result},
-   */
-  isResult(result: unknown): result is Result<unknown, unknown>;
-  /**
-   * Checks if the given value is an {@link Ok},
+   * @param results The array of results, you want to get the values from.
+   * @returns An array containing all {@link Ok} values from the results array, this array isn't guaranteed to be the same length as the results parameter. As it doesn't return {@link Err} values.
    *
-   * @param result The value to check.
-   * @returns A boolean indicating if the value is an {@link Ok}.
+   * @example
+   * ```ts
+   * result.values([Ok(1), Err("error"), Ok(3)])
+   * // -> [1, 3]
+   * ```
    */
-  isOk(result: unknown): result is Ok<unknown>;
-  /**
-   * Checks if the given value is an {@link Err}.
-   *
-   * @param result The value to check.
-   * @returns A boolean indicating if the value is an {@link Err}.
-   */
-  isErr(result: unknown): result is Err<unknown>;
+  values<A, B>(results: Result<A, B>[]): A[];
   /**
    * Wraps a function that may throw an error, into a result.
    * If you know what the error type is, you can specify it as the second generic parameter, by default it is the default `Error` type.
@@ -378,19 +393,6 @@ export const result: StaticResult = {
     if (result.ok) return result.val;
     else return result;
   },
-  values<A, B>(results: Result<A, B>[]): A[] {
-    const values: A[] = [];
-
-    for (const result of results) if (result.ok) values.push(result.val);
-
-    return values;
-  },
-  unwrapBoth<A>(result: Result<A, A>): A {
-    return result.val;
-  },
-  unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B {
-    return result.val;
-  },
   isResult(result: unknown): result is Result<unknown, unknown> {
     return this.isOk(result) || this.isErr(result);
   },
@@ -399,6 +401,29 @@ export const result: StaticResult = {
   },
   isErr(result: unknown): result is Err<unknown> {
     return result instanceof ErrClass;
+  },
+  partition<A, B>(results: Result<A, B>[]) {
+    const ok: A[] = [];
+    const err: B[] = [];
+
+    for (const result of results)
+      if (result.ok) ok.push(result.val);
+      else err.push(result.val);
+
+    return [ok, err];
+  },
+  unwrapBoth<A>(result: Result<A, A>): A {
+    return result.val;
+  },
+  unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B {
+    return result.val;
+  },
+  values<A, B>(results: Result<A, B>[]): A[] {
+    const values: A[] = [];
+
+    for (const result of results) if (result.ok) values.push(result.val);
+
+    return values;
   },
   wrap<A, E = Error>(callback: () => A): Result<A, E> {
     try {
