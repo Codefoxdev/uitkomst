@@ -412,17 +412,17 @@ export const result: StaticResult = {
 
     return new OkClass(values);
   },
-  flatten<A, B>(result: Result<Result<A, B>, B>) {
+  flatten(result) {
     if (result.ok) return result.val;
     else return result;
   },
-  isResult(result: unknown): result is Result<unknown, unknown> {
+  isResult(result) {
     return this.isOk(result) || this.isErr(result);
   },
-  isOk(result: unknown): result is Ok<unknown> {
+  isOk(result) {
     return result instanceof OkClass;
   },
-  isErr(result: unknown): result is Err<unknown> {
+  isErr(result) {
     return result instanceof ErrClass;
   },
   partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]> {
@@ -439,10 +439,10 @@ export const result: StaticResult = {
     return (...args: Parameters<typeof callback>) =>
       result.wrap(() => callback(...args));
   },
-  unwrapBoth<A>(result: Result<A, A>): A {
+  unwrapBoth(result) {
     return result.val;
   },
-  unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B {
+  unwrapBothUnsafe(result) {
     return result.val;
   },
   values<A, B>(results: Result<A, B>[]): A[] {
