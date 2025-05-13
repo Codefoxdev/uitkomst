@@ -304,6 +304,29 @@ export interface StaticResult {
    */
   partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]>;
   /**
+   * Proxies a function to catch any thrown errors and return a result.
+   * This method is similar to `result.wrap`, but is usefull if you need to call and wrap the same function multiple times.
+   *
+   * @param callback The function that should be proxied.
+   * @returns A result containing either they result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}.
+   *
+   * @example
+   * ```ts
+   * const fn = result.proxy(fs.writeFileSync)
+   * fn("file.txt", "Data to write to file", "utf-8")
+   * // -> Result<undefined, Error>
+   *
+   * // Optionally: the error type can be specified as the second generic parameter, due to typescript limitations the first parameter also has to be specified and should be typeof <the function you are proxying> as follows.
+   * const typedFn = result.proxy<typeof someMethodThatThrows, TypeError>(someMethodThatThrows)
+   * typedFn(someMethodArgs)
+   * // -> Result<someReturnType, TypeError>
+   * ```
+   */
+  // biome-ignore lint/suspicious/noExplicitAny: needed
+  proxy<C extends (...args: any[]) => any, B = Error>(
+    callback: C,
+  ): (...args: Parameters<C>) => Result<ReturnType<C>, B>;
+  /**
    * This method is the same as getting the value of a result, using the `Result.val` property,
    * however this ensures type safety by required the type of the `Ok` value to be the same as the type of the `Err` value.
    *
@@ -402,7 +425,7 @@ export const result: StaticResult = {
   isErr(result: unknown): result is Err<unknown> {
     return result instanceof ErrClass;
   },
-  partition<A, B>(results: Result<A, B>[]) {
+  partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]> {
     const ok: A[] = [];
     const err: B[] = [];
 
@@ -411,6 +434,10 @@ export const result: StaticResult = {
       else err.push(result.val);
 
     return [ok, err];
+  },
+  proxy(callback) {
+    return (...args: Parameters<typeof callback>) =>
+      result.wrap(() => callback(...args));
   },
   unwrapBoth<A>(result: Result<A, A>): A {
     return result.val;
