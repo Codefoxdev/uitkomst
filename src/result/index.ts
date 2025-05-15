@@ -1,4 +1,4 @@
-import type { Pair, Yields } from "./types";
+import type { Pair, Yields } from "../types";
 
 export const Ok = <A>(val: A): Ok<A> => new OkClass(val);
 export const Err = <B>(val: B): Err<B> => new ErrClass(val);
