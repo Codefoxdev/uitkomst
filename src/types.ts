@@ -1,10 +1,15 @@
 import type { Result, Ok, Err } from "./result";
+import type { AsyncResult } from "./result/async";
 
 export interface Yields<T, R> {
   [Symbol.iterator](): Generator<T, R, never>;
 }
 
 export type Pair<A, B> = [A, B];
+export type MaybePromise<T> = Promise<T> | T;
+export type MaybeAsyncResult<A, B> =
+  | AsyncResult<A, B>
+  | MaybePromise<Result<A, B>>;
 
 /**
  * Extracts the {@link Ok} value out of a result type.
