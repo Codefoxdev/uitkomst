@@ -13,10 +13,10 @@ interface BaseAsyncResult<A, B> {
   map<C>(callback: (val: A) => MaybePromise<C>): AsyncResult<C, B>;
   mapErr<C>(callback: (val: B) => MaybePromise<C>): AsyncResult<A, C>;
   //or(fallback: MaybeAsyncResult<A, B>): AsyncResult<A, B>;
-  //replace<C>(val: MaybePromise<C>): AsyncResult<C, B>;
-  //replaceErr<C>(val: MaybePromise<C>): AsyncResult<A, C>;
-  //tap(callback: (val: A) => void): Promise<this>;
-  //tapErr(callback: (val: B) => void): Promise<this>;
+  replace<C>(val: MaybePromise<C>): AsyncResult<C, B>;
+  replaceErr<C>(val: MaybePromise<C>): AsyncResult<A, C>;
+  tap(callback: (val: A) => MaybePromise<void>): this;
+  tapErr(callback: (val: B) => MaybePromise<void>): this;
   toPair(): Promise<Pair<A | null, B | null>>;
   toResult(): Promise<Result<A, B>>;
   try<C>(callback: (val: A) => MaybeAsyncResult<C, B>): AsyncResult<C, B>;
@@ -44,6 +44,32 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
 
   mapErr<C>(callback: (val: B) => MaybePromise<C>): AsyncResult<A, C> {
     return this.from((res) => flattenResultPromise(res.mapErr(callback)));
+  }
+
+  replace<C>(val: MaybePromise<C>): AsyncResult<C, B> {
+    return this.from((res) => flattenResultPromise(res.replace(val)));
+  }
+
+  replaceErr<C>(val: MaybePromise<C>): AsyncResult<A, C> {
+    return this.from((res) => flattenResultPromise(res.replaceErr(val)));
+  }
+
+  tap(callback: (val: A) => MaybePromise<void>): this {
+    this.awaited((res) => res.ok && callback(res.val));
+    return this;
+  }
+
+  tapErr(callback: (val: B) => MaybePromise<void>): this {
+    this.awaited((res) => res.err && callback(res.val));
+    return this;
+  }
+
+  async toPair(): Promise<Pair<A | null, B | null>> {
+    return this.toResult().then((result) => result.toPair());
+  }
+
+  async toResult(): Promise<Result<A, B>> {
+    return this._val;
   }
 
   try<C>(callback: (val: A) => MaybeAsyncResult<C, B>): AsyncResult<C, B> {
@@ -76,14 +102,6 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
     });
   }
 
-  async toPair(): Promise<Pair<A | null, B | null>> {
-    return this.toResult().then((result) => result.toPair());
-  }
-
-  async toResult(): Promise<Result<A, B>> {
-    return this._val;
-  }
-
   private from<C, D>(
     callback: (res: Result<A, B>) => Promise<Result<C, D>>,
   ): AsyncResult<C, D> {
@@ -93,6 +111,16 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
         return callback(res);
       })(),
     );
+  }
+
+  private async awaited(
+    callback: (res: Result<A, B>) => unknown,
+  ): Promise<void> {
+    callback(await this.toResult());
+  }
+
+  static from<A, B>(res: Result<A, B>): AsyncResult<A, B> {
+    return new AsyncResult(Promise.resolve(res));
   }
 }
 
