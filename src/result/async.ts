@@ -122,6 +122,15 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
   static from<A, B>(res: Result<A, B>): AsyncResult<A, B> {
     return new AsyncResult(Promise.resolve(res));
   }
+
+  static is(
+    res: unknown,
+  ): res is AsyncResult<unknown, unknown> | AsyncResult<unknown, unknown>[] {
+    return (
+      res instanceof AsyncResult ||
+      (Array.isArray(res) && res[0] instanceof AsyncResult)
+    );
+  }
 }
 
 async function flattenResultPromise<A, B>(

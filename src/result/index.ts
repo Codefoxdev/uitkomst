@@ -1,4 +1,5 @@
 import type { Pair, Yields } from "../types";
+import type { AsyncResult } from "./async";
 
 export const Ok = <A>(val: A): Ok<A> => new OkClass(val);
 export const Err = <B>(val: B): Err<B> => new ErrClass(val);
@@ -303,12 +304,13 @@ export interface StaticResult {
    * ```
    */
   partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]>;
+  partitionAsync<A, B>(results: AsyncResult<A, B>[]): Promise<Pair<A[], B[]>>;
   /**
    * Proxies a function to catch any thrown errors and return a result.
    * This method is similar to `result.wrap`, but is usefull if you need to call and wrap the same function multiple times.
    *
    * @param callback The function that should be proxied.
-   * @returns A result containing either they result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}.
+   * @returns A result containing either the result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}.
    *
    * @example
    * ```ts
@@ -330,7 +332,7 @@ export interface StaticResult {
    * This method is the same as getting the value of a result, using the `Result.val` property,
    * however this ensures type safety by required the type of the `Ok` value to be the same as the type of the `Err` value.
    *
-   * @param result The result to unwrap
+   * @param result The result to unwrap, also supports {@link AsyncResult}
    * @returns The inner value of the result
    *
    * @example
@@ -342,13 +344,15 @@ export interface StaticResult {
    * ```
    */
   unwrapBoth<A>(result: Result<A, A>): A;
+  unwrapBoth<A>(result: AsyncResult<A, A>): Promise<A>;
   /**
    * The same as `result.unwrapBoth`, but this one doesn't require the {@link Ok} and {@link Err} values to be of the same type.
    *
-   * @param result The result to unwrap
+   * @param result The result to unwrap, also supports {@link AsyncResult}
    * @returns The inner value of the result
    */
   unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B;
+  unwrapBothUnsafe<A, B>(result: AsyncResult<A, B>): A | B;
   /**
    * Given an array of results, returns an array containing all `Ok` values.
    * The length of the array is not necessarily equal to the length of the `results` array.
@@ -425,15 +429,21 @@ export const result: StaticResult = {
   isErr(result) {
     return result instanceof ErrClass;
   },
-  partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]> {
-    const ok: A[] = [];
-    const err: B[] = [];
+  partition(results) {
+    const ok = [];
+    const err = [];
 
     for (const result of results)
       if (result.ok) ok.push(result.val);
       else err.push(result.val);
 
     return [ok, err];
+  },
+  async partitionAsync<A, B>(results: AsyncResult<A, B>[]) {
+    // biome-ignore format: It will format it weirdly
+    return Promise
+      .all(results.map((res) => res.toResult()))
+      .then((res) => this.partition(res));
   },
   proxy(callback) {
     return (...args: Parameters<typeof callback>) =>
