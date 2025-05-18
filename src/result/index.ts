@@ -1,5 +1,4 @@
 import type { Pair, Yields } from "../types";
-import type { AsyncResult } from "./async";
 
 export const Ok = <A>(val: A): Ok<A> => new OkClass(val);
 export const Err = <B>(val: B): Err<B> => new ErrClass(val);
@@ -55,6 +54,7 @@ interface BaseResult<A, B> extends Yields<Result<A, B>, A> {
    */
   tapErr(callback: (val: B) => void): this;
   toPair(): Pair<A | null, B | null>;
+  //toAsync(): AsyncResult<A, B>;
   /**
    * Updates this `Ok` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Ok` with an `Err`.)
    * If this is an `Err` rather than an `Ok`, the function is not called and the original `Err` is returned.
@@ -304,7 +304,6 @@ export interface StaticResult {
    * ```
    */
   partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]>;
-  partitionAsync<A, B>(results: AsyncResult<A, B>[]): Promise<Pair<A[], B[]>>;
   /**
    * Proxies a function to catch any thrown errors and return a result.
    * This method is similar to `result.wrap`, but is usefull if you need to call and wrap the same function multiple times.
@@ -344,7 +343,7 @@ export interface StaticResult {
    * ```
    */
   unwrapBoth<A>(result: Result<A, A>): A;
-  unwrapBoth<A>(result: AsyncResult<A, A>): Promise<A>;
+  //unwrapBoth<A>(result: AsyncResult<A, A>): Promise<A>;
   /**
    * The same as `result.unwrapBoth`, but this one doesn't require the {@link Ok} and {@link Err} values to be of the same type.
    *
@@ -352,7 +351,7 @@ export interface StaticResult {
    * @returns The inner value of the result
    */
   unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B;
-  unwrapBothUnsafe<A, B>(result: AsyncResult<A, B>): A | B;
+  //unwrapBothUnsafe<A, B>(result: AsyncResult<A, B>): A | B;
   /**
    * Given an array of results, returns an array containing all `Ok` values.
    * The length of the array is not necessarily equal to the length of the `results` array.
@@ -395,14 +394,29 @@ export interface StaticResult {
    * // -> Promise<Ok(1)>
    * result.wrapAsync(() => Promise.reject(new Error('error')))
    * // -> Promise<Err(Error('error'))>
-   * result.wrap(() => { throw new Error('error') })
+   * result.wrapAsync(() => { throw new Error('error') })
    * // -> Promise<Err(Error('error'))>
    * `
    */
   wrapAsync<A, E = Error>(callback: () => Promise<A>): Promise<Result<A, E>>;
 
   // instance methods
-  //lazyOr<A, B>(result: Result<A, B>, callback: () => Result<A, B>): Result<A, B>;
+
+  // lazyOr
+  // lazyUnwrap
+  // map
+  // mapErr
+  // or
+  // replace
+  // replaceErr
+  // tap
+  // tapErr
+  // toPair
+  // toAsync
+  // try
+  // tryRecover
+  // unwrap
+  // unwrapErr
 }
 
 export const result: StaticResult = {
@@ -438,12 +452,6 @@ export const result: StaticResult = {
       else err.push(result.val);
 
     return [ok, err];
-  },
-  async partitionAsync<A, B>(results: AsyncResult<A, B>[]) {
-    // biome-ignore format: It will format it weirdly
-    return Promise
-      .all(results.map((res) => res.toResult()))
-      .then((res) => this.partition(res));
   },
   proxy(callback) {
     return (...args: Parameters<typeof callback>) =>

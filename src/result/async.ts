@@ -119,6 +119,14 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
     callback(await this.toResult());
   }
 
+  static ok<A>(val: A): AsyncResult<A, never> {
+    return new AsyncResult<A, never>(Promise.resolve(Ok(val)));
+  }
+
+  static err<B>(val: B): AsyncResult<never, B> {
+    return new AsyncResult<never, B>(Promise.resolve(Err(val)));
+  }
+
   static from<A, B>(res: Result<A, B>): AsyncResult<A, B> {
     return new AsyncResult(Promise.resolve(res));
   }
