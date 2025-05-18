@@ -1,8 +1,28 @@
 import type { Result, Ok, Err } from "./result";
 import type { AsyncResult } from "./result/async";
 
-export interface Yields<T, R> {
-  [Symbol.iterator](): Generator<T, R, never>;
+/**
+ * Represents a value that can be deferred with a yield* statement, to be turned into a result.
+ * The implementation of the [Symbol.iterator] method is expected to return a generator
+ * that yields its errors and returns its value.
+ *
+ * @param A The value that is expected to be returned; the {@link Ok} value.
+ * @param B The error type that can be thrown; the {@link Err} value.
+ *
+ * @example This is the internal implementation of this interface on the Ok and Err types respectively
+ * ```ts
+ * // Implementation on the Ok type
+ * [Symbol.iterator] = function* (this: Ok<A>) {
+ *   return this.val;
+ * };
+ * // Implementation on the Err type
+ * [Symbol.iterator] = function* (this: Err<B>) {
+ *   yield this.val;
+ * };
+ * ```
+ */
+export interface Yields<A, B> {
+  [Symbol.iterator](): Generator<B, A, unknown>;
 }
 
 export type Pair<A, B> = [A, B];

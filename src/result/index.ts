@@ -10,7 +10,7 @@ export const Err = <B>(val: B): Err<B> => new ErrClass(val);
  */
 export type Result<A, B> = Ok<A> | Err<B>;
 
-interface BaseResult<A, B> extends Yields<Result<A, B>, A> {
+interface BaseResult<A, B> extends Yields<A, B> {
   readonly val: A | B;
   readonly ok: boolean;
   readonly err: boolean;
@@ -145,8 +145,7 @@ class OkClass<A> implements Ok<A> {
     return fallback;
   }
 
-  [Symbol.iterator] = function* (this: OkClass<A>) {
-    yield this;
+  [Symbol.iterator] = function* (this: Ok<A>) {
     return this.val;
   };
 }
@@ -225,8 +224,8 @@ class ErrClass<B> implements Err<B> {
     return [null, this.val];
   }
 
-  [Symbol.iterator] = function* (this: ErrClass<B>) {
-    yield this;
+  [Symbol.iterator] = function* (this: Err<B>) {
+    yield this.val;
     throw new Error(
       "Err value iterator fully consumed. This iterator is designed to yield its error value and then terminate execution flow.",
     );
