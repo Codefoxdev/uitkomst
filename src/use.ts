@@ -1,4 +1,4 @@
-import type { ExtractErr } from "./types";
+import type { Yields } from "./types";
 import type { Result } from "./result";
 import { result, Ok, Err } from "./result";
 
@@ -8,6 +8,7 @@ import { result, Ok, Err } from "./result";
  * Everytime you delegate a result, using `yield*`, the {@link Ok} value is returned
  * and if it is an {@link Err}, the function stops execution and the error is returned.
  * Although it has the same behaviour as when using result chaining, it may sometimes be more convenient to use.
+ * The `yield*` expression can delegate more than a result, in fact anything that implements the {@link Yields} interface can be used.
  *
  * @example
  * ```ts

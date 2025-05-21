@@ -11,6 +11,7 @@ export const Err = <B>(val: B): Err<B> => new ErrClass(val);
 export type Result<A, B> = Ok<A> | Err<B>;
 
 interface BaseResult<A, B> extends Yields<A, B> {
+  readonly _tag: "Ok" | "Err";
   readonly val: A | B;
   readonly ok: boolean;
   readonly err: boolean;
@@ -76,6 +77,7 @@ interface BaseResult<A, B> extends Yields<A, B> {
 }
 
 export interface Ok<A> extends BaseResult<A, never> {
+  readonly _tag: "Ok";
   readonly val: A;
   readonly ok: true;
   readonly err: false;
@@ -105,6 +107,7 @@ export interface Ok<A> extends BaseResult<A, never> {
 }
 
 class OkClass<A> implements Ok<A> {
+  readonly _tag = "Ok";
   readonly ok = true;
   readonly err = false;
 
@@ -151,6 +154,7 @@ class OkClass<A> implements Ok<A> {
 }
 
 export interface Err<B> extends BaseResult<never, B> {
+  readonly _tag: "Err";
   readonly val: B;
   readonly ok: false;
   readonly err: true;
@@ -175,6 +179,7 @@ export interface Err<B> extends BaseResult<never, B> {
 }
 
 class ErrClass<B> implements Err<B> {
+  readonly _tag = "Err";
   readonly ok = false;
   readonly err = true;
 
