@@ -2,15 +2,30 @@
 A result library inspired by Rust, Gleam and Go.
 ## Table of contents
 - [Why use a Result type](#Why-use-a-Result-type)
+- [Usage](#usage)
+- [Comparison to gleam/result](#comparison-to-gleamresult)
 
 ## Why use a Result type
 There are a lot of ways your JavaScript code can break in production, one of the most frustrating ways is that methods can throw errors that you weren't expecting. Handling these errors is frustrating, and it is often unclear if a method can throw an error, let alone knowing what type of error it is.
-This library aims to fix both of those points, it does so with a result type.
-#todo
 
+This can be improved upon, by using a error-as-value approach, which is commonly seen in Gleam, Rust and Go. This approach makes it clear what errors can be encountered and forces you to handle those errors accordingly.
+
+There are multiple approaches to error-as-value, but fundamentally there are two different methods:
+- Returning a tuple with the value and possible errors. (Go)
+- Returning something similar to a Result type, a thing that can be a value or an error. (Rust & Gleam)
+
+This library is an error-as-value implementation for Typescript. It does by implementing a Result type similar to Rust and Gleam. The Result type is either an `Ok`, which indicates success, or an `Err`, which indicates that something went wrong. The type definition is more similar to Rust's implementation and looks like this:
+```ts
+type Result<A, B> = Ok<A> | Err<B>
+```
 ### Inspirations
-This library is primarily inspired by the [gleam/result](https://hexdocs.pm/gleam_stdlib/gleam/result.html#partition) library. Most of those methods are also present in this library and are almost exactly the same as in gleam, for all the differences see [Comparison to gleam/result](#comparison-to-gleam/result).
-### Comparison to gleam/result
+This library is primarily inspired by the [gleam/result](https://hexdocs.pm/gleam_stdlib/gleam/result.html#partition) library. Most of those methods are also present in this library and are almost exactly the same as in gleam, for all the differences see [Comparison to gleam/result](#comparison-to-gleamresult).
+
+However, if you want to have similar behavior to Go, you can use the `toPair()` method to convert the Result type to a tuple.
+## Usage
+You can create a Result type by calling either the `Ok()` or `Err()` methods, depending on the type you're returning.
+
+## Comparison to gleam/result
 
 | Gleam/result function | This library                | Notes                                                                                                                                                                                                                                           |
 | --------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
