@@ -25,8 +25,15 @@ In order for the Result type to function properly with Typescript, you have to e
 }
 ```
 The core Uitkomst library doesn't have any dependencies and works on all platforms.
+
 ## Usage
-You can create a Result type by calling either the `Ok()` or `Err()` methods, depending on the type you're returning.
+The library exports a couple of methods, the most important methods to know are the `Ok()` and `Err()` methods. These methods are the building blocks for creating a `Result`. 
+
+The library also exports a couple of static methods that are useful for handling result types, but are not able to be implemented on the Result instances, these methods are also exported under the `result` object if you prefer that.
+
+Along with the `Result` type, the library also exports some helper types which could be useful for handling result types.
+
+For an overview of all the exported Symbols, as well as their documentation, check the generated documentation on the JSR page: [@uitkomst/core](https://jsr.io/@uitkomst/core).
 
 ## Why use a Result type
 There are a lot of ways your JavaScript code can break in production, one of the most frustrating ways is that methods can throw errors that you weren't expecting. Handling these errors is frustrating, and it is often unclear if a method can throw an error, let alone knowing what type of error it is.
@@ -72,5 +79,16 @@ However, if you want to have similar behavior to Go, you can use the `toPair()` 
 | `unwrap()`                  | `instance.unwrap()`         |                                                                                                                                                                                                                                             |
 | `unwrap_both()`             | `result.unwrapBoth()`       | This method is only available on the static result object, as it requires the `Ok` and `Err` types to be the same, which cannot be done on the instances.                                                                                   |
 | -                           | `result.unwrapBothUnsafe()` | The same method as above, but doesn't require both types to be the same.                                                                                                                                                                    |
+|                             | `instance.use()`            | See the methods documentation for more info.                                                                                                                                                                                                |
 | `unwrap_error()`            | `instance.unwrapErr()`      |                                                                                                                                                                                                                                             |
 | `values()`                  | `result.values()`           | Same reason as `all()`.                                                                                                                                                                                                                     |
+## Roadmap
+
+While this library is currently suited for use, there are still a couple of features that I would like to implement
+
+| Priority | Feature                 | Notes                                                                                                                                                                                                                                                                             |
+| -------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| +        | `Err` tracing           | The ability to easily trace where an error occurred, either via manual tracing, or using the Error.trace property.                                                                                                                                                                |
+| +        | Async results           | A result that encapsulates a Promise, this is different from a literal Promise result, as the method chains are queued and executed once the promise resolves. This reduces the amount of await statements. A large portion of the code required for this is already implemented. |
+| +        | Pattern matching        | A simple way to pattern match a result, ideally similar to Gleam's case or Rust's match expressions.                                                                                                                                                                              |
+|          | HTTP client / Fetch API | A custom Fetch API (or similar to enhance its usage with result types. This should probably be in a seperate library.                                                                                                                                                             |
