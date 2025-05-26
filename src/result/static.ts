@@ -1,6 +1,6 @@
 import type { Pair } from "../types";
-import type { Result } from ".";
-import { Ok, Err, OkClass, ErrClass } from ".";
+import type { Result } from "./index";
+import { Ok, Err, OkClass, ErrClass } from "./index";
 
 /**
  * Combines an array of results into one.

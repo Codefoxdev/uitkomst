@@ -1,6 +1,6 @@
 import type { MaybePromise, MaybeAsyncResult, Pair, Yields } from "../types";
-import type { Result } from ".";
-import { Ok, Err } from ".";
+import type { Result } from "./index";
+import { Ok, Err } from "./index";
 
 /* extends Yields<AsyncResult<A, B>, A> */
 interface BaseAsyncResult<A, B> {
