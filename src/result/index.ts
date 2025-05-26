@@ -237,7 +237,10 @@ class ErrClass<B> implements Err<B> {
   };
 }
 
-export interface StaticResult {
+/**
+ * A static result object containing all methods that cannot be defined on the instance.
+ */
+export const result = {
   /**
    * Combines an array of results into one.
    * If all results are `Ok`, returns an `Ok` containing an array of their values.
@@ -254,7 +257,15 @@ export interface StaticResult {
    * // -> Err("first")
    * ```
    */
-  all<A, B>(results: Result<A, B>[]): Result<A[], B>;
+  all<A, B>(results: Result<A, B>[]): Result<A[], B> {
+    const values: A[] = [];
+
+    for (const result of results)
+      if (result.ok) values.push(result.val);
+      else return result;
+
+    return new OkClass(values);
+  },
   /**
    * Flattens a nested result into a single result.
    *
@@ -271,28 +282,38 @@ export interface StaticResult {
    * // -> Err("")
    ```
    */
-  flatten<A, B>(result: Result<Result<A, B>, B>): Result<A, B>;
+  flatten<A, B>(result: Result<Result<A, B>, B>): Result<A, B> {
+    if (result.ok) return result.val;
+    else return result;
+  },
   /**
    * Checks if the given value is a result, a.k.a. an {@link Ok} or {@link Err}.
+   * In the implementation, it just uses the `isOk` and `isErr` methods.
    *
    * @param result The value to check.
    * @returns A boolean indicating if the value is a {@link Result},
    */
-  isResult(result: unknown): result is Result<unknown, unknown>;
+  isResult(result: unknown): result is Result<unknown, unknown> {
+    return this.isOk(result) || this.isErr(result);
+  },
   /**
    * Checks if the given value is an {@link Ok},
    *
    * @param result The value to check.
    * @returns A boolean indicating if the value is an {@link Ok}.
    */
-  isOk(result: unknown): result is Ok<unknown>;
+  isOk(result: unknown): result is Ok<unknown> {
+    return result instanceof OkClass;
+  },
   /**
    * Checks if the given value is an {@link Err}.
    *
    * @param result The value to check.
    * @returns A boolean indicating if the value is an {@link Err}.
    */
-  isErr(result: unknown): result is Err<unknown>;
+  isErr(result: unknown): result is Err<unknown> {
+    return result instanceof ErrClass;
+  },
   /**
    * Given an array of results, returns a pair of arrays containing the `Ok` and `Err` values respectively.
    * The lengths of the arrays are not necessarily equal.
@@ -307,7 +328,16 @@ export interface StaticResult {
    * // -> [[1, 2], ["a", "b"]]
    * ```
    */
-  partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]>;
+  partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]> {
+    const ok = [];
+    const err = [];
+
+    for (const result of results)
+      if (result.ok) ok.push(result.val);
+      else err.push(result.val);
+
+    return [ok, err];
+  },
   /**
    * Proxies a function to catch any thrown errors and return a result.
    * This method is similar to `result.wrap`, but is usefull if you need to call and wrap the same function multiple times.
@@ -327,10 +357,13 @@ export interface StaticResult {
    * // -> Result<someReturnType, TypeError>
    * ```
    */
-  // biome-ignore lint/suspicious/noExplicitAny: needed
+  // biome-ignore lint/suspicious/noExplicitAny: Doesn't matter, as it gets replaced by actual types when used.
   proxy<C extends (...args: any[]) => any, B = Error>(
     callback: C,
-  ): (...args: Parameters<C>) => Result<ReturnType<C>, B>;
+  ): (...args: Parameters<C>) => Result<ReturnType<C>, B> {
+    return (...args: Parameters<typeof callback>) =>
+      result.wrap(() => callback(...args));
+  },
   /**
    * This method is the same as getting the value of a result, using the `Result.val` property,
    * however this ensures type safety by required the type of the `Ok` value to be the same as the type of the `Err` value.
@@ -346,16 +379,18 @@ export interface StaticResult {
    * // -> 2
    * ```
    */
-  unwrapBoth<A>(result: Result<A, A>): A;
-  //unwrapBoth<A>(result: AsyncResult<A, A>): Promise<A>;
+  unwrapBoth<A>(result: Result<A, A>): A {
+    return result.val;
+  },
   /**
    * The same as `result.unwrapBoth`, but this one doesn't require the {@link Ok} and {@link Err} values to be of the same type.
    *
    * @param result The result to unwrap, also supports {@link AsyncResult}
    * @returns The inner value of the result
    */
-  unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B;
-  //unwrapBothUnsafe<A, B>(result: AsyncResult<A, B>): A | B;
+  unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B {
+    return result.val;
+  },
   /**
    * Given an array of results, returns an array containing all `Ok` values.
    * The length of the array is not necessarily equal to the length of the `results` array.
@@ -369,7 +404,13 @@ export interface StaticResult {
    * // -> [1, 3]
    * ```
    */
-  values<A, B>(results: Result<A, B>[]): A[];
+  values<A, B>(results: Result<A, B>[]): A[] {
+    const values: A[] = [];
+
+    for (const result of results) if (result.ok) values.push(result.val);
+
+    return values;
+  },
   /**
    * Wraps a function that may throw an error, into a result.
    * If you know what the error type is, you can specify it as the second generic parameter, by default it is the default `Error` type.
@@ -385,7 +426,13 @@ export interface StaticResult {
    * // -> Err(Error('error'))
    * ```
    */
-  wrap<A, E = Error>(callback: () => A): Result<A, E>;
+  wrap<A, E = Error>(callback: () => A): Result<A, E> {
+    try {
+      return Ok(callback());
+    } catch (error) {
+      return Err(error as E);
+    }
+  },
   /**
    * An async version of `result.wrap`.
    *
@@ -402,7 +449,20 @@ export interface StaticResult {
    * // -> Promise<Err(Error('error'))>
    * `
    */
-  wrapAsync<A, E = Error>(callback: () => Promise<A>): Promise<Result<A, E>>;
+  async wrapAsync<A, E = Error>(
+    callback: () => Promise<A>,
+  ): Promise<Result<A, E>> {
+    try {
+      return new Promise((resolve) => {
+        callback().then(
+          (v) => resolve(Ok(v)),
+          (e) => resolve(Err(e)),
+        );
+      });
+    } catch (error) {
+      return Err(error as E);
+    }
+  },
 
   // instance methods
 
@@ -421,79 +481,4 @@ export interface StaticResult {
   // tryRecover
   // unwrap
   // unwrapErr
-}
-
-export const result: StaticResult = {
-  // 'static' methods
-  all<A, B>(results: Result<A, B>[]) {
-    const values: A[] = [];
-
-    for (const result of results)
-      if (result.ok) values.push(result.val);
-      else return result;
-
-    return new OkClass(values);
-  },
-  flatten(result) {
-    if (result.ok) return result.val;
-    else return result;
-  },
-  isResult(result) {
-    return this.isOk(result) || this.isErr(result);
-  },
-  isOk(result) {
-    return result instanceof OkClass;
-  },
-  isErr(result) {
-    return result instanceof ErrClass;
-  },
-  partition(results) {
-    const ok = [];
-    const err = [];
-
-    for (const result of results)
-      if (result.ok) ok.push(result.val);
-      else err.push(result.val);
-
-    return [ok, err];
-  },
-  proxy(callback) {
-    return (...args: Parameters<typeof callback>) =>
-      result.wrap(() => callback(...args));
-  },
-  unwrapBoth(result) {
-    return result.val;
-  },
-  unwrapBothUnsafe(result) {
-    return result.val;
-  },
-  values<A, B>(results: Result<A, B>[]): A[] {
-    const values: A[] = [];
-
-    for (const result of results) if (result.ok) values.push(result.val);
-
-    return values;
-  },
-  wrap<A, E = Error>(callback: () => A): Result<A, E> {
-    try {
-      return Ok(callback());
-    } catch (error) {
-      return Err(error as E);
-    }
-  },
-  async wrapAsync<A, E = Error>(
-    callback: () => Promise<A>,
-  ): Promise<Result<A, E>> {
-    try {
-      return new Promise((resolve) => {
-        callback().then(
-          (v) => resolve(Ok(v)),
-          (e) => resolve(Err(e)),
-        );
-      });
-    } catch (error) {
-      return Err(error as E);
-    }
-  },
-  // instance methods
 };
