@@ -2,7 +2,7 @@ import type { MaybePromise, MaybeAsyncResult, Pair, Yields } from "../types";
 import type { Result } from "./index";
 import { Ok, Err } from "./index";
 
-/* extends Yields<AsyncResult<A, B>, A> */
+/* extends Yields<Promise<Result<A, B>>, A> */
 interface BaseAsyncResult<A, B> {
   readonly val: Promise<A | B>;
   readonly ok: Promise<boolean>;
@@ -39,28 +39,28 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
   }
 
   map<C>(callback: (val: A) => MaybePromise<C>): AsyncResult<C, B> {
-    return this.from((res) => flattenResultPromise(res.map(callback)));
+    return createAsyncResult(this, (res) => flattenResultPromise(res.map(callback)));
   }
 
   mapErr<C>(callback: (val: B) => MaybePromise<C>): AsyncResult<A, C> {
-    return this.from((res) => flattenResultPromise(res.mapErr(callback)));
+    return createAsyncResult(this, (res) => flattenResultPromise(res.mapErr(callback)));
   }
 
   replace<C>(val: MaybePromise<C>): AsyncResult<C, B> {
-    return this.from((res) => flattenResultPromise(res.replace(val)));
+    return createAsyncResult(this, (res) => flattenResultPromise(res.replace(val)));
   }
 
   replaceErr<C>(val: MaybePromise<C>): AsyncResult<A, C> {
-    return this.from((res) => flattenResultPromise(res.replaceErr(val)));
+    return createAsyncResult(this, (res) => flattenResultPromise(res.replaceErr(val)));
   }
 
   tap(callback: (val: A) => MaybePromise<void>): this {
-    this.awaited((res) => res.ok && callback(res.val));
+    this.toResult().then(res => res.ok && callback(res.val));
     return this;
   }
 
   tapErr(callback: (val: B) => MaybePromise<void>): this {
-    this.awaited((res) => res.err && callback(res.val));
+    this.toResult().then(res => res.err && callback(res.val));
     return this;
   }
 
@@ -73,7 +73,7 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
   }
 
   try<C>(callback: (val: A) => MaybeAsyncResult<C, B>): AsyncResult<C, B> {
-    return this.from(async (res) => {
+    return createAsyncResult(this, async (res) => {
       if (res.err) return res;
       return toPromiseResult(await callback(res.unwrap()));
     });
@@ -82,41 +82,18 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
   tryRecover<C>(
     callback: (val: B) => MaybeAsyncResult<A, C>,
   ): AsyncResult<A, C> {
-    return this.from(async (res) => {
+    return createAsyncResult(this, async (res) => {
       if (res.ok) return res;
       return toPromiseResult(await callback(res.unwrapErr()));
     });
   }
 
   async unwrap(fallback: MaybePromise<A>): Promise<A> {
-    return await this.toResult().then((result) => {
-      if (result.ok) return result.unwrap();
-      else return fallback;
-    });
+    return this.toResult().then(res => res.ok ? res.unwrap() : fallback);
   }
 
   async unwrapErr(fallback: MaybePromise<B>): Promise<B> {
-    return await this.toResult().then((result) => {
-      if (result.err) return result.unwrapErr();
-      else return fallback;
-    });
-  }
-
-  private from<C, D>(
-    callback: (res: Result<A, B>) => Promise<Result<C, D>>,
-  ): AsyncResult<C, D> {
-    return new AsyncResult(
-      (async () => {
-        const res = await this.toResult();
-        return callback(res);
-      })(),
-    );
-  }
-
-  private async awaited(
-    callback: (res: Result<A, B>) => unknown,
-  ): Promise<void> {
-    callback(await this.toResult());
+    return this.toResult().then(res => res.err ? res.unwrapErr() : fallback);
   }
 
   static ok<A>(val: A): AsyncResult<A, never> {
@@ -127,17 +104,28 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
     return new AsyncResult<never, B>(Promise.resolve(Err(val)));
   }
 
-  static from<A, B>(res: Result<A, B>): AsyncResult<A, B> {
-    return new AsyncResult(Promise.resolve(res));
+  /**
+  * Constructs an AsyncResult from a Result, a `Promise<Result>` or an existing AsyncResult.
+  *
+  * @param res The value to construct an AsyncResult from.
+  * @returns The constructed AsyncResult.
+  */
+  static from<A, B>(res: MaybeAsyncResult<A, B>): AsyncResult<A, B> {
+    if (res instanceof AsyncResult) return res;
+    else return new AsyncResult(res instanceof Promise ? res : Promise.resolve(res));
   }
 
+  /**
+  * Checks if the given value is an AsyncResult, or if it is an array containing only AsyncResults.
+  *
+  * @param res The value to check.
+  * @returns A boolean indicating whether the value is an AsyncResult or an array containg only AsyncResults.
+  */
   static is(
     res: unknown,
   ): res is AsyncResult<unknown, unknown> | AsyncResult<unknown, unknown>[] {
-    return (
-      res instanceof AsyncResult ||
-      (Array.isArray(res) && res[0] instanceof AsyncResult)
-    );
+    if (res instanceof AsyncResult) return true;
+    else return Array.isArray(res) && res.every(r => r instanceof AsyncResult);
   }
 }
 
@@ -149,13 +137,19 @@ async function flattenResultPromise<A, B>(
   else return Err(val as Awaited<B>);
 }
 
+function createAsyncResult<A, B, C, D>(
+  baseResult: AsyncResult<A, B>,
+  callback: (res: Result<A, B>) => MaybeAsyncResult<C, D>,
+): AsyncResult<C, D> {
+  return AsyncResult.from(
+    baseResult.toResult()
+      .then(res => toPromiseResult(callback(res)))
+  );
+}
+
 function toPromiseResult<A, B>(
   res: MaybeAsyncResult<A, B>,
 ): Promise<Result<A, B>> {
   if (res instanceof AsyncResult) return res.toResult();
-  else return ensurePromise(res);
-}
-
-async function ensurePromise<A>(val: MaybePromise<A>): Promise<A> {
-  return await val;
+  else return Promise.resolve(res);
 }
