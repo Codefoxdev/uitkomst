@@ -16,6 +16,7 @@
     "lint": "oxlint"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "oxlint": "^0.16.12",
     "typescript": "^5.8.3",
     "unbuild": "^3.5.0"

@@ -26,8 +26,8 @@ export interface Yields<A, B> {
 }
 
 /**
-* An asynchronous version of {@link Yields}.
-*/
+ * An asynchronous version of {@link Yields}.
+ */
 export interface AsyncYields<A, B> {
   [Symbol.asyncIterator](): AsyncGenerator<B, A, unknown>;
 }

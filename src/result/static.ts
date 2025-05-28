@@ -295,9 +295,7 @@ export function values<A, B>(
  * // -> Err(Error('error'))
  * ```
  */
-export function wrap<A, E = Error>(
-  callback: () => A,
-): Result<A, E> {
+export function wrap<A, E = Error>(callback: () => A): Result<A, E> {
   try {
     const res = callback();
     return Ok(res);

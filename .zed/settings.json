@@ -5,7 +5,7 @@
 {
   "formatter": {
     "language_server": {
-      "name": "oxc"
+      "name": "biome"
     }
   }
 }
