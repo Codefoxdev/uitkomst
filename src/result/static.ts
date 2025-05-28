@@ -124,7 +124,6 @@ export function partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]> {
  * // -> Result<someReturnType, TypeError>
  * ```
  */
-// biome-ignore lint/suspicious/noExplicitAny: Doesn't matter, as it gets replaced by actual types when used.
 export function proxy<C extends (...args: any[]) => any, B = Error>(
   callback: C,
 ): (...args: Parameters<C>) => Result<ReturnType<C>, B> {

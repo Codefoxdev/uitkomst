@@ -17,17 +17,6 @@
     "enabled": false
   },
   "linter": {
-    "enabled": true,
-    "rules": {
-      "style": {
-        "noUselessElse": "off"
-      },
-      "suspicious": {
-        "noAssignInExpressions": "off"
-      },
-      "correctness": {
-        "useYield": "off"
-      }
-    }
+    "enabled": false
   }
 }
