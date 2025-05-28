@@ -1,9 +1,8 @@
-import type { MaybePromise, MaybeAsyncResult, Pair, Yields } from "../types";
+import type { MaybePromise, MaybeAsyncResult, Pair, AsyncYields } from "../types";
 import type { Result } from "./index";
 import { Ok, Err } from "./index";
 
-/* extends Yields<Promise<Result<A, B>>, A> */
-interface BaseAsyncResult<A, B> {
+interface BaseAsyncResult<A, B> extends AsyncYields<A, B> {
   readonly val: Promise<A | B>;
   readonly ok: Promise<boolean>;
   readonly err: Promise<boolean>;
@@ -12,7 +11,7 @@ interface BaseAsyncResult<A, B> {
   //lazyUnwrap(callback: () => MaybePromise<A>): Promise<A>;
   map<C>(callback: (val: A) => MaybePromise<C>): AsyncResult<C, B>;
   mapErr<C>(callback: (val: B) => MaybePromise<C>): AsyncResult<A, C>;
-  //or(fallback: MaybeAsyncResult<A, B>): AsyncResult<A, B>;
+  or(fallback: MaybeAsyncResult<A, B>): AsyncResult<A, B>;
   replace<C>(val: MaybePromise<C>): AsyncResult<C, B>;
   replaceErr<C>(val: MaybePromise<C>): AsyncResult<A, C>;
   tap(callback: (val: A) => MaybePromise<void>): this;
@@ -44,6 +43,10 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
 
   mapErr<C>(callback: (val: B) => MaybePromise<C>): AsyncResult<A, C> {
     return createAsyncResult(this, (res) => flattenResultPromise(res.mapErr(callback)));
+  }
+
+  or(fallback: MaybeAsyncResult<A, B>): AsyncResult<A, B> {
+    return createAsyncResult(this, (res) => res.ok ? res : toPromiseResult(fallback));
   }
 
   replace<C>(val: MaybePromise<C>): AsyncResult<C, B> {
@@ -96,6 +99,16 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
     return this.toResult().then(res => res.err ? res.unwrapErr() : fallback);
   }
 
+  async *[Symbol.asyncIterator](this: AsyncResult<A, B>): AsyncGenerator<B, A, never> {
+    const res = await this.toResult();
+    if (res.ok) return res.unwrap();
+
+    yield res.unwrapErr();
+    throw new Error(
+      "Err value iterator fully consumed. This iterator is designed to yield its error value and then terminate execution flow.",
+    );
+  }
+
   static ok<A>(val: A): AsyncResult<A, never> {
     return new AsyncResult<A, never>(Promise.resolve(Ok(val)));
   }
@@ -128,6 +141,8 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
     else return Array.isArray(res) && res.every(r => r instanceof AsyncResult);
   }
 }
+
+// Helper methods
 
 async function flattenResultPromise<A, B>(
   res: Result<A, B>,

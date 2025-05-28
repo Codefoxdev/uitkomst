@@ -25,6 +25,13 @@ export interface Yields<A, B> {
   [Symbol.iterator](): Generator<B, A, unknown>;
 }
 
+/**
+* An asynchronous version of {@link Yields}.
+*/
+export interface AsyncYields<A, B> {
+  [Symbol.asyncIterator](): AsyncGenerator<B, A, unknown>;
+}
+
 export type Pair<A, B> = [A, B];
 export type MaybePromise<T> = Promise<T> | T;
 export type MaybeAsyncResult<A, B> =
