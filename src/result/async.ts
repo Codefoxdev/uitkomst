@@ -43,31 +43,31 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
   }
 
   map<C>(callback: (val: A) => MaybePromise<C>): AsyncResult<C, B> {
-    return createAsyncResult(this, (res) =>
+    return createAsyncResultFrom(this, (res) =>
       flattenResultPromise(res.map(callback)),
     );
   }
 
   mapErr<C>(callback: (val: B) => MaybePromise<C>): AsyncResult<A, C> {
-    return createAsyncResult(this, (res) =>
+    return createAsyncResultFrom(this, (res) =>
       flattenResultPromise(res.mapErr(callback)),
     );
   }
 
   or(fallback: MaybeAsyncResult<A, B>): AsyncResult<A, B> {
-    return createAsyncResult(this, (res) =>
+    return createAsyncResultFrom(this, (res) =>
       res.ok ? res : toPromiseResult(fallback),
     );
   }
 
   replace<C>(val: MaybePromise<C>): AsyncResult<C, B> {
-    return createAsyncResult(this, (res) =>
+    return createAsyncResultFrom(this, (res) =>
       flattenResultPromise(res.replace(val)),
     );
   }
 
   replaceErr<C>(val: MaybePromise<C>): AsyncResult<A, C> {
-    return createAsyncResult(this, (res) =>
+    return createAsyncResultFrom(this, (res) =>
       flattenResultPromise(res.replaceErr(val)),
     );
   }
@@ -91,7 +91,7 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
   }
 
   try<C>(callback: (val: A) => MaybeAsyncResult<C, B>): AsyncResult<C, B> {
-    return createAsyncResult(this, async (res) => {
+    return createAsyncResultFrom(this, async (res) => {
       if (res.err) return res;
       return toPromiseResult(await callback(res.unwrap()));
     });
@@ -100,7 +100,7 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
   tryRecover<C>(
     callback: (val: B) => MaybeAsyncResult<A, C>,
   ): AsyncResult<A, C> {
-    return createAsyncResult(this, async (res) => {
+    return createAsyncResultFrom(this, async (res) => {
       if (res.ok) return res;
       return toPromiseResult(await callback(res.unwrapErr()));
     });
@@ -167,7 +167,7 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
 
 // Helper methods
 
-async function flattenResultPromise<A, B>(
+export async function flattenResultPromise<A, B>(
   res: Result<A, B>,
 ): Promise<Result<Awaited<A>, Awaited<B>>> {
   const val = await res.val;
@@ -175,7 +175,13 @@ async function flattenResultPromise<A, B>(
   else return Err(val as Awaited<B>);
 }
 
-function createAsyncResult<A, B, C, D>(
+export function createAsyncResult<A, B>(
+  callback: () => MaybeAsyncResult<A, B>,
+): AsyncResult<A, B> {
+  return AsyncResult.from(callback());
+}
+
+export function createAsyncResultFrom<A, B, C, D>(
   baseResult: AsyncResult<A, B>,
   callback: (res: Result<A, B>) => MaybeAsyncResult<C, D>,
 ): AsyncResult<C, D> {
@@ -184,7 +190,7 @@ function createAsyncResult<A, B, C, D>(
   );
 }
 
-function toPromiseResult<A, B>(
+export function toPromiseResult<A, B>(
   res: MaybeAsyncResult<A, B>,
 ): Promise<Result<A, B>> {
   if (res instanceof AsyncResult) return res.toResult();

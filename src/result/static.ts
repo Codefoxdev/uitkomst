@@ -1,5 +1,6 @@
-import type { Pair } from "../types";
+import type { MaybeAsyncResult, MaybePromise, Pair } from "../types";
 import type { Result } from "./index";
+import { AsyncResult, createAsyncResultFrom } from "./async";
 import { Ok, Err, OkClass, ErrClass } from "./index";
 
 /**
@@ -18,7 +19,19 @@ import { Ok, Err, OkClass, ErrClass } from "./index";
  * // -> Err("first")
  * ```
  */
-export function all<A, B>(results: Result<A, B>[]): Result<A[], B> {
+export function all<A, B>(results: Result<A, B>[]): Result<A[], B>;
+/**
+ * @overload Asynchronous version of the {@link partition} method.
+ */
+export function all<A, B>(results: AsyncResult<A, B>[]): AsyncResult<A[], B>;
+export function all<A, B>(
+  results: Result<A, B>[] | AsyncResult<A, B>[],
+): Result<A[], B> | AsyncResult<A[], B> {
+  if (AsyncResult.is(results))
+    return AsyncResult.from(
+      Promise.all(results.map((res) => res.toResult())).then((arr) => all(arr)),
+    );
+
   const values: A[] = [];
 
   for (const result of results)
@@ -44,9 +57,18 @@ export function all<A, B>(results: Result<A, B>[]): Result<A[], B> {
  * // -> Err("")
  ```
  */
-export function flatten<A, B>(result: Result<Result<A, B>, B>): Result<A, B> {
-  if (result.ok) return result.val;
-  else return result;
+export function flatten<A, B>(result: Result<Result<A, B>, B>): Result<A, B>;
+/**
+ * @overload Asynchronous version of the {@link partition} method.
+ */
+// biome-ignore format:
+export function flatten<A, B>(result: AsyncResult<MaybeAsyncResult<A, B>, B>): AsyncResult<A, B>;
+export function flatten<A, B>(
+  result: Result<Result<A, B>, B> | AsyncResult<MaybeAsyncResult<A, B>, B>,
+): Result<A, B> | AsyncResult<A, B> {
+  if (isResult(result)) return result.ok ? result.val : result;
+
+  return createAsyncResultFrom(result, (res) => (res.ok ? res.unwrap() : res));
 }
 
 /**
@@ -94,7 +116,21 @@ export function isErr(result: unknown): result is Err<unknown> {
  * // -> [[1, 2], ["a", "b"]]
  * ```
  */
-export function partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]> {
+export function partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]>;
+/**
+ * @overload Asynchronous version of the {@link partition} method.
+ */
+// biome-ignore format:
+export function partition<A, B>(results: AsyncResult<A, B>[]): Promise<Pair<A[], B[]>>;
+export function partition<A, B>(
+  results: Result<A, B>[] | AsyncResult<A, B>[],
+): Pair<A[], B[]> | Promise<Pair<A[], B[]>> {
+  if (AsyncResult.is(results))
+    // biome-ignore format:
+    return Promise
+      .all(results.map((result) => result.toResult()))
+      .then((res) => partition(res));
+
   const ok = [];
   const err = [];
 
@@ -146,7 +182,11 @@ export function proxy<C extends (...args: any[]) => any, B = Error>(
  * // -> 2
  * ```
  */
-export function unwrapBoth<A>(result: Result<A, A>): A {
+export function unwrapBoth<A>(result: Result<A, A>): A;
+export function unwrapBoth<A>(result: AsyncResult<A, A>): Promise<A>;
+export function unwrapBoth<A>(
+  result: Result<A, A> | AsyncResult<A, A>,
+): MaybePromise<A> {
   return result.val;
 }
 
@@ -156,7 +196,13 @@ export function unwrapBoth<A>(result: Result<A, A>): A {
  * @param result The result to unwrap, also supports {@link AsyncResult}
  * @returns The inner value of the result
  */
-export function unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B {
+export function unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B;
+export function unwrapBothUnsafe<A, B>(
+  result: AsyncResult<A, B>,
+): Promise<A | B>;
+export function unwrapBothUnsafe<A, B>(
+  result: Result<A, B> | AsyncResult<A, B>,
+): MaybePromise<A | B> {
   return result.val;
 }
 
@@ -185,12 +231,25 @@ export function unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B {
  * });
  * ```
  */
+export function use<A, B>(callback: () => Generator<B, A, never>): Result<A, B>;
+/**
+ * @overload Use method with async support.
+ */
 export function use<A, B>(
-  callback: () => Generator<B, A, never>,
-): Result<A, B> {
+  callback: () => AsyncGenerator<B, A, never>,
+): AsyncResult<A, B>;
+export function use<A, B>(
+  callback: () => Generator<B, A, never> | AsyncGenerator<B, A, never>,
+): Result<A, B> | AsyncResult<A, B> {
   const res = callback().next();
-  if (res.done) return Ok(res.value);
-  else return Err(res.value);
+  if (!(res instanceof Promise))
+    return res.done ? Ok(res.value) : Err(res.value);
+
+  return AsyncResult.from(
+    res.then((awaited) =>
+      awaited.done ? Ok(awaited.value) : Err(awaited.value),
+    ),
+  );
 }
 
 /**
@@ -206,12 +265,19 @@ export function use<A, B>(
  * // -> [1, 3]
  * ```
  */
-export function values<A, B>(results: Result<A, B>[]): A[] {
-  const values: A[] = [];
+export function values<A, B>(results: Result<A, B>[]): A[];
+export function values<A, B>(results: AsyncResult<A, B>[]): Promise<A[]>;
+export function values<A, B>(
+  results: Result<A, B>[] | AsyncResult<A, B>[],
+): MaybePromise<A[]> {
+  if (AsyncResult.is(results))
+    return Promise.all(results.map((res) => res.toResult())).then((arr) =>
+      values(arr),
+    );
 
-  for (const result of results) if (result.ok) values.push(result.val);
-
-  return values;
+  const val: A[] = [];
+  for (const result of results) if (result.ok) val.push(result.val);
+  return val;
 }
 
 /**
@@ -229,9 +295,12 @@ export function values<A, B>(results: Result<A, B>[]): A[] {
  * // -> Err(Error('error'))
  * ```
  */
-export function wrap<A, E = Error>(callback: () => A): Result<A, E> {
+export function wrap<A, E = Error>(
+  callback: () => A,
+): Result<A, E> {
   try {
-    return Ok(callback());
+    const res = callback();
+    return Ok(res);
   } catch (error) {
     return Err(error as E);
   }
