@@ -141,12 +141,17 @@ export function partition<A, B>(
   return [ok, err];
 }
 
+type Callback<A extends Array<any> = any[], R = any> = (...args: A) => R;
+type AutoDetermineResult<A, B> = A extends Promise<infer P>
+  ? AsyncResult<P, B>
+  : Result<A, B>;
+
 /**
  * Proxies a function to catch any thrown errors and return a result.
  * This method is similar to `result.wrap`, but is usefull if you need to call and wrap the same function multiple times.
  *
  * @param callback The function that should be proxied.
- * @returns A result containing either the result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}.
+ * @returns A result containing either the result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}. If the callback returns a promise, it will return an {@link AsyncResult} instead.
  *
  * @example
  * ```ts
@@ -154,17 +159,20 @@ export function partition<A, B>(
  * fn("file.txt", "Data to write to file", "utf-8")
  * // -> Result<undefined, Error>
  *
- * // Optionally: the error type can be specified as the second generic parameter, due to typescript limitations the first parameter also has to be specified and should be typeof <the function you are proxying> as follows.
- * const typedFn = result.proxy<typeof someMethodThatThrows, TypeError>(someMethodThatThrows)
+ * // Optionally: the error type can be specified as the first generic parameter.
+ * const typedFn = result.proxy<TypeError>(someMethodThatThrows)
  * typedFn(someMethodArgs)
  * // -> Result<someReturnType, TypeError>
  * ```
+ *
+ * @template B The error that `callback` may throw, defaults to the generic `Error` type.
+ * @template C The type of the callback function, should not have to be specified, as it should be inferred from the `callback` parameter.
  */
-export function proxy<C extends (...args: any[]) => any, B = Error>(
+export function proxy<B = Error, C extends Callback = Callback>(
   callback: C,
-): (...args: Parameters<C>) => Result<ReturnType<C>, B> {
-  return (...args: Parameters<typeof callback>) =>
-    wrap(() => callback(...args));
+): (...args: Parameters<C>) => AutoDetermineResult<ReturnType<C>, B> {
+  return (...args: Parameters<C>) =>
+    wrap(() => callback(...args)) as AutoDetermineResult<ReturnType<C>, B>;
 }
 
 /**
@@ -282,10 +290,10 @@ export function values<A, B>(
 
 /**
  * Wraps a function that may throw an error, into a result.
- * If you know what the error type is, you can specify it as the second generic parameter, by default it is the default `Error` type.
+ * If you know what the error type is, you can specify it as the first generic parameter, by default it is the default `Error` type.
  *
  * @param callback The function that should be wrapped.
- * @returns A result containing either they result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}.
+ * @returns A result containing either they result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}. If the callback returns a promise, it will return an {@link AsyncResult} instead.
  *
  * @example
  * ```ts
@@ -294,31 +302,33 @@ export function values<A, B>(
  * result.wrap(() => { throw new Error('error') })
  * // -> Err(Error('error'))
  * ```
+ *
+ * @template B The error that the callback may throw, defaults to the generic `Error` type.
+ * @template A The return type of the callback, this should be inferred automatically.
  */
-export function wrap<A, E = Error>(callback: () => A): Result<A, E> {
+export function wrap<B = Error, A = any>(
+  callback: () => A,
+): AutoDetermineResult<A, B> {
+  // The assertions are needed, as typescript can't infer correctly without them.
   try {
-    const res = callback();
-    return Ok(res);
+    const returned = callback();
+    if (!(returned instanceof Promise))
+      return Ok(returned) as AutoDetermineResult<A, B>;
+
+    return AsyncResult.from(
+      new Promise((resolve) => {
+        returned
+          .then((val) => resolve(Ok(val)))
+          .catch((err) => resolve(Err(err)));
+      }),
+    ) as AutoDetermineResult<A, B>;
   } catch (error) {
-    return Err(error as E);
+    return Err(error) as AutoDetermineResult<A, B>;
   }
 }
 
 /**
- * An async version of `result.wrap`.
- *
- * @param callback The function that should be wrapped.
- * @returns A result containing either they result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}.
- *
- * @example
- * ```ts
- * result.wrapAsync(() => Promise.resolve(1))
- * // -> Promise<Ok(1)>
- * result.wrapAsync(() => Promise.reject(new Error('error')))
- * // -> Promise<Err(Error('error'))>
- * result.wrapAsync(() => { throw new Error('error') })
- * // -> Promise<Err(Error('error'))>
- * `
+ * @deprecated Use {@link wrap} instead.
  */
 export async function wrapAsync<A, E = Error>(
   callback: () => Promise<A>,
