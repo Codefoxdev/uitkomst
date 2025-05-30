@@ -1,6 +1,7 @@
 export type { ExtractErr, ExtractOk, ExtractValue, Pair } from "./types";
 export type { Result } from "./result";
 export { Ok, Err } from "./result";
+export { AsyncResult } from "./result/async";
 export * from "./result/static";
 
 // Export static methods as a namespace for convenience

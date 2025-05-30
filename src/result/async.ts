@@ -7,31 +7,7 @@ import type {
 import type { Result } from "./index";
 import { Ok, Err } from "./index";
 
-interface BaseAsyncResult<A, B> extends AsyncYields<A, B> {
-  readonly val: Promise<A | B>;
-  readonly ok: Promise<boolean>;
-  readonly err: Promise<boolean>;
-
-  //lazyOr(callback: () => MaybeAsyncResult<A, B>): AsyncResult<A, B>;
-  //lazyUnwrap(callback: () => MaybePromise<A>): Promise<A>;
-  map<C>(callback: (val: A) => MaybePromise<C>): AsyncResult<C, B>;
-  mapErr<C>(callback: (val: B) => MaybePromise<C>): AsyncResult<A, C>;
-  or(fallback: MaybeAsyncResult<A, B>): AsyncResult<A, B>;
-  replace<C>(val: MaybePromise<C>): AsyncResult<C, B>;
-  replaceErr<C>(val: MaybePromise<C>): AsyncResult<A, C>;
-  tap(callback: (val: A) => MaybePromise<void>): this;
-  tapErr(callback: (val: B) => MaybePromise<void>): this;
-  toPair(): Promise<Pair<A | null, B | null>>;
-  toResult(): Promise<Result<A, B>>;
-  try<C>(callback: (val: A) => MaybeAsyncResult<C, B>): AsyncResult<C, B>;
-  tryRecover<C>(
-    callback: (val: B) => MaybeAsyncResult<A, C>,
-  ): AsyncResult<A, C>;
-  unwrap(fallback: MaybePromise<A>): Promise<A>;
-  unwrapErr(fallback: MaybePromise<B>): Promise<B>;
-}
-
-export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
+export class AsyncResult<A, B> implements AsyncYields<A, B> {
   readonly val: Promise<A | B>;
   readonly ok: Promise<boolean>;
   readonly err: Promise<boolean>;
@@ -41,6 +17,9 @@ export class AsyncResult<A, B> implements BaseAsyncResult<A, B> {
     this.ok = _val.then((res) => res.ok);
     this.err = _val.then((res) => res.err);
   }
+
+  //lazyOr(callback: () => MaybeAsyncResult<A, B>): AsyncResult<A, B>;
+  //lazyUnwrap(callback: () => MaybePromise<A>): Promise<A>;
 
   map<C>(callback: (val: A) => MaybePromise<C>): AsyncResult<C, B> {
     return createAsyncResultFrom(this, (res) =>
