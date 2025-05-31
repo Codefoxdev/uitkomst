@@ -1,5 +1,5 @@
 import type { Result, Ok, Err } from "./result";
-import type { AsyncResult } from "./result/async";
+import type { AsyncResult } from "./async";
 
 /**
  * Represents a value that can be deferred with a yield* statement, to be turned into a result.

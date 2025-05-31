@@ -1,11 +1,11 @@
 export type { ExtractErr, ExtractOk, ExtractValue, Pair } from "./types";
 export type { Result } from "./result";
 export { Ok, Err } from "./result";
-export { AsyncResult } from "./result/async";
-export * from "./result/static";
+export { AsyncResult } from "./async";
+export * from "./static";
 
 // Export static methods as a namespace for convenience
-import * as _result from "./result/static";
+import * as _result from "./static";
 
 /**
  * Namespace containing static utility methods for working with Result objects.

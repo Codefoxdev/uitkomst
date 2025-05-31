@@ -1,7 +1,7 @@
-import type { MaybeAsyncResult, MaybePromise, Pair } from "../types";
+import type { MaybeAsyncResult, MaybePromise, Pair } from "./types";
 import type { Result } from "./index";
 import { AsyncResult, createAsyncResultFrom } from "./async";
-import { Ok, Err, OkClass, ErrClass } from "./index";
+import { Ok, Err, OkClass, ErrClass } from "./result";
 
 /**
  * Combines an array of results into one.

@@ -3,9 +3,9 @@ import type {
   MaybeAsyncResult,
   Pair,
   AsyncYields,
-} from "../types";
-import type { Result } from "./index";
-import { Ok, Err } from "./index";
+} from "./types";
+import type { Result } from "./result";
+import { Ok, Err } from "./result";
 
 export class AsyncResult<A, B> implements AsyncYields<A, B> {
   readonly val: Promise<A | B>;
