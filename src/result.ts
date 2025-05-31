@@ -1,3 +1,4 @@
+import { AsyncResult } from "./async";
 import type { Pair, Yields } from "./types";
 
 export const Ok = <A>(val: A): Ok<A> => new OkClass(val);
@@ -54,8 +55,11 @@ interface BaseResult<A, B> extends Yields<A, B> {
    * This doesn't modify the result, if you want to modify the `Err` value, use `mapErr` instead.
    */
   tapErr(callback: (val: B) => void): this;
+  /**
+   * Returns an array of length 2, where the first element is the `Ok` value and the second element is the `Err` value.
+   */
   toPair(): Pair<A | null, B | null>;
-  //toAsync(): AsyncResult<A, B>;
+  toAsync(): AsyncResult<A, B>;
   /**
    * Updates this `Ok` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Ok` with an `Err`.)
    * If this is an `Err` rather than an `Ok`, the function is not called and the original `Err` is returned.
@@ -98,6 +102,7 @@ export interface Ok<A> extends BaseResult<A, never> {
    */
   map<C, B>(callback: (val: A) => C): Result<C, B>;
   toPair(): Pair<A, null>;
+  toAsync(): AsyncResult<A, never>;
   try<C, B>(callback: (val: A) => Result<C, B>): Result<C, B>;
   replace<C>(val: C): Ok<C>;
   /**
@@ -134,6 +139,10 @@ export class OkClass<A> implements Ok<A> {
 
   toPair(): Pair<A, null> {
     return [this.val, null];
+  }
+
+  toAsync(): AsyncResult<A, never> {
+    return AsyncResult.from<A, never>(this);
   }
 
   try<C, B>(callback: (val: A) => Result<C, B>) {
@@ -176,6 +185,7 @@ export interface Err<B> extends BaseResult<never, B> {
    */
   replaceErr<A, C>(val: C): Result<A, C>;
   toPair(): Pair<null, B>;
+  toAsync(): AsyncResult<never, B>;
 }
 
 export class ErrClass<B> implements Err<B> {
@@ -227,6 +237,10 @@ export class ErrClass<B> implements Err<B> {
 
   toPair(): Pair<null, B> {
     return [null, this.val];
+  }
+
+  toAsync(): AsyncResult<never, B> {
+    return AsyncResult.from<never, B>(this);
   }
 
   [Symbol.iterator] = function* (this: Err<B>) {

@@ -28,9 +28,7 @@ export function all<A, B>(
   results: Result<A, B>[] | AsyncResult<A, B>[],
 ): Result<A[], B> | AsyncResult<A[], B> {
   if (AsyncResult.is(results))
-    return AsyncResult.from(
-      Promise.all(results.map((res) => res.toResult())).then((arr) => all(arr)),
-    );
+    return AsyncResult.from(Promise.all(results).then((arr) => all(arr)));
 
   const values: A[] = [];
 
@@ -126,10 +124,7 @@ export function partition<A, B>(
   results: Result<A, B>[] | AsyncResult<A, B>[],
 ): Pair<A[], B[]> | Promise<Pair<A[], B[]>> {
   if (AsyncResult.is(results))
-    // biome-ignore format:
-    return Promise
-      .all(results.map((result) => result.toResult()))
-      .then((res) => partition(res));
+    return Promise.all(results).then((res) => partition(res));
 
   const ok = [];
   const err = [];
@@ -279,9 +274,7 @@ export function values<A, B>(
   results: Result<A, B>[] | AsyncResult<A, B>[],
 ): MaybePromise<A[]> {
   if (AsyncResult.is(results))
-    return Promise.all(results.map((res) => res.toResult())).then((arr) =>
-      values(arr),
-    );
+    return Promise.all(results).then((arr) => values(arr));
 
   const val: A[] = [];
   for (const result of results) if (result.ok) val.push(result.val);
