@@ -1,32 +1,32 @@
-import { AsyncResult } from "./async";
-import { isPromise } from "./helper";
 import type {
   Pair,
   Yields,
   Tagged,
   PromiseIf,
-  DistributePromiseResult,
-  MaybePromise,
-  ExtractOk,
-  ExtractErr,
   EnsurePromise,
+  MaybePromise,
 } from "./types";
+import { AsyncResult } from "./async";
+import { isPromise } from "./helper";
 
-export const Ok = <A>(val: A): Ok<A> => new OkClass(val);
-export const Err = <B>(val: B): Err<B> => new ErrClass(val);
+export const Ok = <A>(val: A): Ok<A> => new Ok_(val);
+export const Err = <B>(val: B): Err<B> => new Err_(val);
 
 /**
  * The `Result` type represents a value that can be either a success (`Ok`) or a failure (`Err`).
  * This implementation is heavily inspired by Gleam's Result type, however it also contains some additional methods
  * and the properties are in camelCase instead of snake_case to follow JavaScript conventions.
  */
-export type Result<A, B> = Ok<A> | Err<B>;
+export type Result<A, B> = Ok_<A> | Err_<B>;
+export type Ok<A> = Result<A, never>;
+export type Err<B> = Result<never, B>;
 
 abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
   readonly _tag = "Result";
+  declare readonly _type: "Ok" | "Err" | "Async";
   declare readonly _val: A | B;
-  declare readonly ok: boolean;
-  declare readonly err: boolean;
+  abstract get ok(): boolean;
+  abstract get err(): boolean;
 
   abstract lazyOr(callback: () => Result<A, B>): Result<A, B>;
   abstract lazyUnwrap(callback: () => A): A;
@@ -72,25 +72,29 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
    * Returns an array of length 2, where the first element is the `Ok` value and the second element is the `Err` value.
    */
   abstract toPair(): Pair<A | null, B | null>;
-  //abstract toAsync(): AsyncResult<A, B>;
   /**
    * Updates this `Ok` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Ok` with an `Err`.)
    * If this is an `Err` rather than an `Ok`, the function is not called and the original `Err` is returned.
    */
-  abstract try<C extends MaybePromise<Result<any, MaybePromise<B>>>>(
-    callback: (val: Awaited<A>) => C,
-  ): C extends Promise<infer R>
-    ? Result<EnsurePromise<ExtractOk<R>>, Promise<B>>
+  abstract try<C, D extends B, R extends MaybePromise<Result<C, D>>>(
+    callback: (val: Awaited<A>) => R,
+  ): R extends Promise<Result<infer Ok, infer Err>>
+    ? AsyncResult<Awaited<Ok>, Awaited<Err>>
     : A extends Promise<any>
-      ? Result<EnsurePromise<ExtractOk<C>>, EnsurePromise<ExtractErr<C>>>
-      : Result<ExtractOk<C>, ExtractErr<C>>;
+      ? AsyncResult<Awaited<C>, Awaited<D>>
+      : Result<C, D>;
+
   /**
    * Updates this `Err` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Err` with an `Ok`.)
    * If this is an `Ok` rather than an `Err`, the function is not called and the original `Ok` is returned.
    */
-  abstract tryRecover<C>(
-    callback: (val: Awaited<B>) => Result<A, C>,
-  ): Result<A, C>;
+  abstract tryRecover<C extends A, D, R extends MaybePromise<Result<C, D>>>(
+    callback: (val: Awaited<B>) => R,
+  ): R extends Promise<Result<infer Ok, infer Err>>
+    ? AsyncResult<Awaited<Ok>, Awaited<Err>>
+    : B extends Promise<any>
+      ? AsyncResult<Awaited<C>, Awaited<D>>
+      : Result<C, D>;
   /**
    * Extracts the `Ok` value, returning the `fallback` argument if the result is an `Err`.
    */
@@ -114,9 +118,8 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
   }
 }
 
-export type Ok<A> = Ok_<A>;
-
 export class Ok_<A> extends Result_<A, never> {
+  override readonly _type = "Ok";
   override readonly ok = true;
   override readonly err = false;
 
@@ -167,13 +170,31 @@ export class Ok_<A> extends Result_<A, never> {
     return [this._val, null];
   }
 
-  // try<C extends MaybePromise<Result<any, MaybePromise<B>>>, B>(
-  //   callback: (val: Awaited<A>) => C,
-  // ): C extends Promise<infer R>
-  //   ? Result<EnsurePromise<ExtractOk<R>>, Promise<B>>
+  // try<C, D, R extends MaybePromise<Result<C, D>>>(
+  //   callback: (val: Awaited<A>) => R,
+  // ): R extends Promise<Result<infer Ok, infer Err>>
+  //   ? AsyncResult<Awaited<Ok>, Awaited<Err>>
   //   : A extends Promise<any>
-  //     ? Result<EnsurePromise<ExtractOk<C>>, EnsurePromise<ExtractErr<C>>>
-  //     : Result<ExtractOk<C>, ExtractErr<C>>;
+  //     ? AsyncResult<Awaited<C>, Awaited<D>>
+  //     : Result<C, D> {
+  //   if (isPromise(this._val))
+  //     return new AsyncResult(async (resolve) => {
+  //       const res = await this.promise.then(callback);
+  //       if (res.ok) resolve(new Ok_(await res._val));
+  //       else resolve(new Err_(await res._val));
+  //     });
+
+  //   const res = callback(this._val as Awaited<A>);
+  //   if (isPromise(res)) {
+  //     return new AsyncResult(async (resolve) => {
+  //       const resolvedRes = await res;
+  //       if (resolvedRes.ok) resolve(new Ok_(await resolvedRes._val));
+  //       else resolve(new Err_(await resolvedRes._val));
+  //     });
+  //   }
+
+  //   return res as Result<C, D>;
+  // }
 
   unwrap(): A {
     return this._val;
@@ -184,131 +205,63 @@ export class Ok_<A> extends Result_<A, never> {
   }
 }
 
-export class OkClass<A> implements Ok<A> {
-  readonly _tag = "Ok";
-  readonly ok = true;
-  readonly err = false;
+export class Err_<B> extends Result_<never, B> {
+  override readonly _type = "Err";
+  override readonly ok = false;
+  override readonly err = true;
 
-  constructor(readonly val: A) {}
+  constructor(override readonly _val: B) {
+    super();
+  }
 
-  lazyOr = () => this;
-  or = () => this;
-  tapErr = () => this;
-  mapErr = () => this;
-  tryRecover = () => this;
-  replaceErr = () => this;
+  lazyOr<A>(callback: () => Result<A, B>): Result<A, B> {
+    return callback();
+  }
 
-  lazyUnwrap = () => this.val;
-  unwrap = () => this.val;
+  lazyUnwrap<A>(callback: () => A): A {
+    return callback();
+  }
 
-  tap(callback: (val: A) => void) {
-    callback(this.val);
+  map(): Err<B> {
     return this;
   }
 
-  map<C extends A>(callback: (val: A) => C): Ok<C> {
-    return new OkClass(callback(this.val));
+  mapErr<C>(callback: (val: Awaited<B>) => C): Err<PromiseIf<B, C>> {
+    if (isPromise(this._val))
+      return new Err_(this.promise.then(callback) as PromiseIf<B, C>);
+    else return new Err_(callback(this._val as Awaited<B>) as PromiseIf<B, C>);
   }
 
-  toPair(): Pair<A, null> {
-    return [this.val, null];
-  }
-
-  toAsync(): AsyncResult<A, never> {
-    return AsyncResult.from<A, never>(this);
-  }
-
-  try<C, B>(callback: (val: A) => Result<C, B>) {
-    return callback(this.val);
-  }
-
-  replace<C>(val: C) {
-    return new OkClass(val);
-  }
-
-  unwrapErr<B>(fallback: B) {
+  or<A>(fallback: Result<A, B>): Result<A, B> {
     return fallback;
   }
-}
 
-export interface Err<B> extends Result_<never, B> {
-  readonly _tag: "Err";
-  readonly val: B;
-  readonly ok: false;
-  readonly err: true;
+  replace(): Err<B> {
+    return this;
+  }
 
-  tap(): this;
-  map(): this;
-  try(): this;
-  replace(): this;
+  replaceErr<C>(val: C): Err<C> {
+    return new Err_(val);
+  }
 
-  unwrapErr(): B;
+  tap(): this {
+    return this;
+  }
 
-  lazyUnwrap<A>(callback: () => A): A;
-  unwrap<A>(fallback: A): A;
-  lazyOr<A>(callback: () => Result<A, B>): Result<A, B>;
-  or<A>(fallback: Result<A, B>): Result<A, B>;
-  replaceErr<C>(val: C): Err<C>;
-  /**
-   * @override Optionally provides `Ok` type hints, so typescript simplifies to `Result<A, B>` instead of `Ok<A> | Err<B>`.
-   */
-  replaceErr<A, C>(val: C): Result<A, C>;
-  toPair(): Pair<null, B>;
-  toAsync(): AsyncResult<never, B>;
-}
+  tapErr(callback: (val: Awaited<B>) => void): this {
+    this.promise.then(callback);
+    return this;
+  }
 
-export class ErrClass<B> implements Err<B> {
-  readonly _tag = "Err";
-  readonly ok = false;
-  readonly err = true;
-
-  constructor(readonly val: B) {}
-
-  tap = () => this;
-  map = () => this;
-  try = () => this;
-  replace = () => this;
-
-  unwrapErr = () => this.val;
-
-  lazyUnwrap<A>(callback: () => A) {
-    return callback();
+  toPair(): Pair<null, B | null> {
+    return [null, this._val];
   }
 
   unwrap<A>(fallback: A): A {
     return fallback;
   }
 
-  lazyOr<A>(callback: () => Result<A, B>) {
-    return callback();
-  }
-
-  or<A>(fallback: Result<A, B>) {
-    return fallback;
-  }
-
-  tapErr(callback: (val: B) => void) {
-    callback(this.val);
-    return this;
-  }
-
-  mapErr<C>(callback: (val: B) => C) {
-    return new ErrClass(callback(this.val));
-  }
-
-  tryRecover<A, C>(callback: (val: B) => Result<A, C>): Result<A, C> {
-    return callback(this.val);
-  }
-
-  replaceErr<C>(val: C) {
-    return new ErrClass(val);
-  }
-
-  toPair(): Pair<null, B> {
-    return [null, this.val];
-  }
-
-  toAsync(): AsyncResult<never, B> {
-    return AsyncResult.from<never, B>(this);
+  unwrapErr(): B {
+    return this._val;
   }
 }

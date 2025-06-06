@@ -12,7 +12,7 @@ export class AsyncResult<A, B>
   implements AsyncYields<A, B>
 {
   get val(): Promise<A | B> {
-    return super.then((res) => res.val);
+    return super.then((res) => res._val);
   }
 
   get ok(): Promise<boolean> {
@@ -64,12 +64,12 @@ export class AsyncResult<A, B>
   }
 
   tap(callback: (val: A) => MaybePromise<void>): this {
-    super.then((res) => res.ok && callback(res.val));
+    super.then((res) => res.ok && callback(res._val));
     return this;
   }
 
   tapErr(callback: (val: B) => MaybePromise<void>): this {
-    super.then((res) => res.err && callback(res.val));
+    super.then((res) => res.err && callback(res._val));
     return this;
   }
 
@@ -156,9 +156,8 @@ export class AsyncResult<A, B>
 export async function flattenResultPromise<A, B>(
   res: Result<A, B>,
 ): Promise<Result<Awaited<A>, Awaited<B>>> {
-  const val = await res.val;
-  if (res.ok) return Ok(val as Awaited<A>);
-  else return Err(val as Awaited<B>);
+  if (res.ok) return Ok(res._val as Awaited<A>);
+  else return Err(res._val as Awaited<B>);
 }
 
 export function createAsyncResult<A, B>(
