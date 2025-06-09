@@ -3,14 +3,17 @@ import type {
   MaybeAsyncResult,
   Pair,
   AsyncYields,
+  Tagged,
 } from "./types";
 import type { Result } from "./result";
 import { Ok, Err } from "./result";
 
 export class AsyncResult<A, B>
   extends Promise<Result<A, B>>
-  implements AsyncYields<A, B>
+  implements AsyncYields<A, B>, Tagged<"AsyncResult">
 {
+  readonly _tag = "AsyncResult";
+
   get val(): Promise<A | B> {
     return super.then((res) => res._val);
   }
@@ -117,12 +120,16 @@ export class AsyncResult<A, B>
     );
   }
 
-  static ok<A>(val: A): AsyncResult<A, never> {
-    return new AsyncResult<A, never>((resolve) => resolve(Ok(val)));
+  static ok<A>(val: A | Promise<A>): AsyncResult<A, never> {
+    return new AsyncResult<A, never>((resolve) =>
+      Promise.resolve(val).then((v) => resolve(Ok(v))),
+    );
   }
 
-  static err<B>(val: B): AsyncResult<never, B> {
-    return new AsyncResult<never, B>((resolve) => resolve(Err(val)));
+  static err<B>(val: B | Promise<B>): AsyncResult<never, B> {
+    return new AsyncResult<never, B>((resolve) =>
+      Promise.resolve(val).then((v) => resolve(Err(v))),
+    );
   }
 
   /**
