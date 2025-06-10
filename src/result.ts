@@ -3,23 +3,28 @@ import type {
   Yields,
   Tagged,
   PromiseIf,
-  EnsurePromise,
   MaybePromise,
+  ResultLike,
 } from "./types";
-import { AsyncResult } from "./async";
 import { isPromise } from "./helper";
+import { AsyncResult } from "./async";
 
-export const Ok = <A>(val: A): Ok<A> => new Ok_(val);
-export const Err = <B>(val: B): Err<B> => new Err_(val);
+export function Ok_<A>(val: A): Ok<A> {
+  return new Ok(val);
+}
+
+export function Err_<B>(val: B): Err<B> {
+  return new Err(val);
+}
 
 /**
  * The `Result` type represents a value that can be either a success (`Ok`) or a failure (`Err`).
  * This implementation is heavily inspired by Gleam's Result type, however it also contains some additional methods
  * and the properties are in camelCase instead of snake_case to follow JavaScript conventions.
  */
-export type Result<A, B> = Ok_<A> | Err_<B>;
-export type Ok<A> = Result<A, never>;
-export type Err<B> = Result<never, B>;
+export type Result<A, B> = Ok<A> | Err<B>;
+export type Ok_<A> = Result<A, never>;
+export type Err_<B> = Result<never, B>;
 
 abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
   readonly _tag = "Result";
@@ -30,12 +35,14 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
 
   abstract lazyOr(callback: () => Result<A, B>): Result<A, B>;
   abstract lazyUnwrap(callback: () => A): A;
+
   /**
    * Returns a Result that updates the value held within the `Ok` with the result of the `callback` function.
    * The value that is returned from `callback` is used to update the value with.
    * If this is an `Err` rather than `Ok`, `callback` is not called and it returns this result.
    */
   abstract map<C>(callback: (val: Awaited<A>) => C): Result<PromiseIf<A, C>, B>;
+
   /**
    * Updates the value held within the `Err` of this result by calling `callback` with it.
    * The value that is returned from `callback` is used to replace the value with.
@@ -44,61 +51,46 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
   abstract mapErr<C>(
     callback: (val: Awaited<B>) => C,
   ): Result<A, PromiseIf<B, C>>;
+
   /**
    * Returns this value if it is `Ok`, otherwise returns the `fallback` argument.
    */
   abstract or(fallback: Result<A, B>): Result<A, B>;
+
   /**
    * Replaces the value held within the `Ok` of this result with the `val` argument.
    * If this is an `Err` rather than `Ok`, the value is not replaced and this `Result` stays the same.
    */
   abstract replace<C>(val: C): Result<C, B>;
+
   /**
    * Replaces the value held within the `Err` of this result with the `val` argument.
    * If this is an `Ok` rather than `Err`, the value is not replaced and this `Result` stays the same.
    */
   abstract replaceErr<C>(val: C): Result<A, C>;
+
   /**
    * 'Taps' into the result, calling `callback` with the value if this is an `Ok`.
    * This doesn't modify the result, if you want to modify the `Ok` value, use `map` instead.
    */
-  abstract tap(callback: (val: Awaited<A>) => void): this;
+  abstract tap(callback: (val: Awaited<A>) => void): Result<A, B>;
+
   /**
    * 'Taps' into the result, calling `callback` with the value if this is an `Err`.
    * This doesn't modify the result, if you want to modify the `Err` value, use `mapErr` instead.
    */
-  abstract tapErr(callback: (val: Awaited<B>) => void): this;
+  abstract tapErr(callback: (val: Awaited<B>) => void): Result<A, B>;
+
   /**
    * Returns an array of length 2, where the first element is the `Ok` value and the second element is the `Err` value.
    */
   abstract toPair(): Pair<A | null, B | null>;
-  /**
-   * Updates this `Ok` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Ok` with an `Err`.)
-   * If this is an `Err` rather than an `Ok`, the function is not called and the original `Err` is returned.
-   */
-  abstract try<C, D extends B, R extends MaybePromise<Result<C, D>>>(
-    callback: (val: Awaited<A>) => R,
-  ): R extends Promise<Result<infer Ok, infer Err>>
-    ? AsyncResult<Awaited<Ok>, Awaited<Err>>
-    : A extends Promise<any>
-      ? AsyncResult<Awaited<C>, Awaited<D>>
-      : Result<C, D>;
 
-  /**
-   * Updates this `Err` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Err` with an `Ok`.)
-   * If this is an `Ok` rather than an `Err`, the function is not called and the original `Ok` is returned.
-   */
-  abstract tryRecover<C extends A, D, R extends MaybePromise<Result<C, D>>>(
-    callback: (val: Awaited<B>) => R,
-  ): R extends Promise<Result<infer Ok, infer Err>>
-    ? AsyncResult<Awaited<Ok>, Awaited<Err>>
-    : B extends Promise<any>
-      ? AsyncResult<Awaited<C>, Awaited<D>>
-      : Result<C, D>;
   /**
    * Extracts the `Ok` value, returning the `fallback` argument if the result is an `Err`.
    */
   abstract unwrap(fallback: A): A;
+
   /**
    * Extracts the `Err` value, returning the `fallback` argument if the result is an `Ok`.
    */
@@ -118,7 +110,7 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
   }
 }
 
-export class Ok_<A> extends Result_<A, never> {
+export class Ok<A> extends Result_<A, never> {
   override readonly _type = "Ok";
   override readonly ok = true;
   override readonly err = false;
@@ -137,8 +129,8 @@ export class Ok_<A> extends Result_<A, never> {
 
   map<C>(callback: (val: Awaited<A>) => C): Ok<PromiseIf<A, C>> {
     if (isPromise(this._val))
-      return new Ok_(this.promise.then(callback) as PromiseIf<A, C>);
-    else return new Ok_(callback(this._val as Awaited<A>) as PromiseIf<A, C>);
+      return new Ok(this.promise.then(callback) as PromiseIf<A, C>);
+    else return new Ok(callback(this._val as Awaited<A>) as PromiseIf<A, C>);
   }
 
   mapErr(): Ok<A> {
@@ -150,7 +142,7 @@ export class Ok_<A> extends Result_<A, never> {
   }
 
   replace<C>(val: C): Ok<C> {
-    return new Ok_(val);
+    return new Ok(val);
   }
 
   replaceErr(): Ok<A> {
@@ -170,31 +162,47 @@ export class Ok_<A> extends Result_<A, never> {
     return [this._val, null];
   }
 
-  // try<C, D, R extends MaybePromise<Result<C, D>>>(
-  //   callback: (val: Awaited<A>) => R,
-  // ): R extends Promise<Result<infer Ok, infer Err>>
-  //   ? AsyncResult<Awaited<Ok>, Awaited<Err>>
-  //   : A extends Promise<any>
-  //     ? AsyncResult<Awaited<C>, Awaited<D>>
-  //     : Result<C, D> {
-  //   if (isPromise(this._val))
-  //     return new AsyncResult(async (resolve) => {
-  //       const res = await this.promise.then(callback);
-  //       if (res.ok) resolve(new Ok_(await res._val));
-  //       else resolve(new Err_(await res._val));
-  //     });
+  /**
+   * Updates this `Ok` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Ok` with an `Err`.)
+   * If this is an `Err` rather than an `Ok`, the function is not called and the original `Err` is returned.
+   * Use `tryAsync` when dealing with async values.
+   */
+  try<R extends Result<any, any>>(callback: (val: A) => R): R {
+    return callback(this._val);
+  }
 
-  //   const res = callback(this._val as Awaited<A>);
-  //   if (isPromise(res)) {
-  //     return new AsyncResult(async (resolve) => {
-  //       const resolvedRes = await res;
-  //       if (resolvedRes.ok) resolve(new Ok_(await resolvedRes._val));
-  //       else resolve(new Err_(await resolvedRes._val));
-  //     });
-  //   }
+  /**
+   * Async version of `try`.
+   */
+  tryAsync<R extends MaybePromise<Tagged<"Result">>>(
+    callback: (val: Awaited<A>) => R,
+  ): R extends MaybePromise<ResultLike<infer Ok, infer Err>>
+    ? AsyncResult<Ok, Err>
+    : never {
+    const res = AsyncResult.from(
+      this.promise.then(callback) as Promise<Result<any, any>>,
+    );
 
-  //   return res as Result<C, D>;
-  // }
+    return res as R extends MaybePromise<ResultLike<infer Ok, infer Err>>
+      ? AsyncResult<Ok, Err>
+      : never;
+  }
+
+  /**
+   * Updates this `Err` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Err` with an `Ok`.)
+   * If this is an `Ok` rather than an `Err`, the function is not called and the original `Ok` is returned.
+   * Use `TryRecoverAsync` when dealing with async values.
+   */
+  tryRecover(): Ok<A> {
+    return this;
+  }
+
+  /**
+   * Async version of `tryRecover`.
+   */
+  tryRecoverAsync(): AsyncResult<Awaited<A>, never> {
+    return AsyncResult.ok(this._val as Awaited<A>);
+  }
 
   unwrap(): A {
     return this._val;
@@ -205,7 +213,7 @@ export class Ok_<A> extends Result_<A, never> {
   }
 }
 
-export class Err_<B> extends Result_<never, B> {
+export class Err<B> extends Result_<never, B> {
   override readonly _type = "Err";
   override readonly ok = false;
   override readonly err = true;
@@ -228,8 +236,8 @@ export class Err_<B> extends Result_<never, B> {
 
   mapErr<C>(callback: (val: Awaited<B>) => C): Err<PromiseIf<B, C>> {
     if (isPromise(this._val))
-      return new Err_(this.promise.then(callback) as PromiseIf<B, C>);
-    else return new Err_(callback(this._val as Awaited<B>) as PromiseIf<B, C>);
+      return new Err(this.promise.then(callback) as PromiseIf<B, C>);
+    else return new Err(callback(this._val as Awaited<B>) as PromiseIf<B, C>);
   }
 
   or<A>(fallback: Result<A, B>): Result<A, B> {
@@ -241,20 +249,62 @@ export class Err_<B> extends Result_<never, B> {
   }
 
   replaceErr<C>(val: C): Err<C> {
-    return new Err_(val);
+    return new Err(val);
   }
 
-  tap(): this {
+  tap(): Err<B> {
     return this;
   }
 
-  tapErr(callback: (val: Awaited<B>) => void): this {
+  tapErr(callback: (val: Awaited<B>) => void): Err<B> {
     this.promise.then(callback);
     return this;
   }
 
   toPair(): Pair<null, B | null> {
     return [null, this._val];
+  }
+
+  /**
+   * Updates this `Ok` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Ok` with an `Err`.)
+   * If this is an `Err` rather than an `Ok`, the function is not called and the original `Err` is returned.
+   * Use `tryAsync` when dealing with async values.
+   */
+  try(): Err<B> {
+    return this;
+  }
+
+  /**
+   * Async version of `try`.
+   */
+  tryAsync(): AsyncResult<never, Awaited<B>> {
+    return AsyncResult.err(this._val as Awaited<B>);
+  }
+
+  /**
+   * Updates this `Err` result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the `Err` with an `Ok`.)
+   * If this is an `Ok` rather than an `Err`, the function is not called and the original `Ok` is returned.
+   * Use `TryRecoverAsync` when dealing with async values.
+   */
+  tryRecover<R extends Result<any, any>>(callback: (val: B) => R): R {
+    return callback(this._val);
+  }
+
+  /**
+   * Async version of `tryRecover`.
+   */
+  tryRecoverAsync<R extends MaybePromise<Tagged<"Result">>>(
+    callback: (val: Awaited<B>) => R,
+  ): R extends MaybePromise<ResultLike<infer Ok, infer Err>>
+    ? AsyncResult<Ok, Err>
+    : never {
+    const res = AsyncResult.from(
+      this.promise.then(callback) as Promise<Result<any, any>>,
+    );
+
+    return res as R extends MaybePromise<ResultLike<infer Ok, infer Err>>
+      ? AsyncResult<Ok, Err>
+      : never;
   }
 
   unwrap<A>(fallback: A): A {

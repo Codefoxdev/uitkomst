@@ -37,7 +37,7 @@ export interface Tagged<T> {
 }
 
 export type PromiseIf<A, B> = A extends Promise<any> ? Promise<Awaited<B>> : B;
-export type EnsurePromise<P> = P extends Promise<any> ? P : Promise<P>;
+export type ResultLike<A, B> = Result<A, B> | AsyncResult<A, B>;
 
 export type Pair<A, B> = [A, B];
 export type MaybePromise<T> = Promise<T> | T;

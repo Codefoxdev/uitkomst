@@ -1,6 +1,6 @@
 export type { ExtractErr, ExtractOk, ExtractValue, Pair } from "./types";
 export type { Result } from "./result";
-export { Ok, Err } from "./result";
+export { Ok_ as Ok, Err_ as Err } from "./result";
 export { AsyncResult } from "./async";
 export * from "./static";
 

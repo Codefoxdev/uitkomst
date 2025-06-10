@@ -13,8 +13,9 @@ export class AsyncResult<A, B>
   implements AsyncYields<A, B>, Tagged<"AsyncResult">
 {
   readonly _tag = "AsyncResult";
+  readonly _type = "Async";
 
-  get val(): Promise<A | B> {
+  get _val(): Promise<A | B> {
     return super.then((res) => res._val);
   }
 
@@ -122,13 +123,13 @@ export class AsyncResult<A, B>
 
   static ok<A>(val: A | Promise<A>): AsyncResult<A, never> {
     return new AsyncResult<A, never>((resolve) =>
-      Promise.resolve(val).then((v) => resolve(Ok(v))),
+      Promise.resolve(val).then((v) => resolve(new Ok(v))),
     );
   }
 
   static err<B>(val: B | Promise<B>): AsyncResult<never, B> {
     return new AsyncResult<never, B>((resolve) =>
-      Promise.resolve(val).then((v) => resolve(Err(v))),
+      Promise.resolve(val).then((v) => resolve(new Err(v))),
     );
   }
 
@@ -163,8 +164,8 @@ export class AsyncResult<A, B>
 export async function flattenResultPromise<A, B>(
   res: Result<A, B>,
 ): Promise<Result<Awaited<A>, Awaited<B>>> {
-  if (res.ok) return Ok(res._val as Awaited<A>);
-  else return Err(res._val as Awaited<B>);
+  if (res.ok) return new Ok(res._val as Awaited<A>);
+  else return new Err(res._val as Awaited<B>);
 }
 
 export function createAsyncResult<A, B>(
