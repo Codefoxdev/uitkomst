@@ -1,7 +1,7 @@
-import type { MaybeAsyncResult, MaybePromise, Pair } from "./types";
+import type { MaybeAsyncResult, MaybePromise, Pair, ResultLike } from "./types";
 import type { Result } from "./index";
 import { AsyncResult, createAsyncResultFrom } from "./async";
-import { Ok, Err, OkClass, ErrClass } from "./result";
+import { Ok, Err } from "./result";
 
 /**
  * Combines an array of results into one.
@@ -33,10 +33,78 @@ export function all<A, B>(
   const values: A[] = [];
 
   for (const result of results)
-    if (result.ok) values.push(result.val);
+    if (result.ok) values.push(result.unwrap());
     else return result;
 
-  return Ok(values);
+  return new Ok(values);
+}
+
+/**
+ * Asserts that a result is an {@link Ok}, and returns the unwrapped value.
+ * @param result The result to assert.
+ * @returns The unwrapped {@link Ok} value.
+ * @throws {Error} If the result is an {@link Err}.
+ *
+ * @example
+ * ```ts
+ * let result: Result<string, Error>;
+ * let okVal = assertOk(result); // <- May throw if the result is an Err.
+ * // -> string
+ * ```
+ */
+export function assertOk<A, B>(result: Result<A, B>): A;
+export function assertOk<A, B>(result: AsyncResult<A, B>): Promise<A>;
+export function assertOk<A, B>(result: ResultLike<A, B>) {
+  if (AsyncResult.is(result))
+    return result.then((res) => {
+      if (res.ok) return Promise.resolve(res.unwrap());
+
+      return Promise.reject(
+        new Error(
+          "Expected result to be of type Ok, but received Err instead.",
+        ),
+      );
+    });
+
+  if (result.ok) return result.unwrap();
+
+  throw new Error(
+    "Expected result to be of type Ok, but received Err instead.",
+  );
+}
+
+/**
+ * Asserts that a result is an {@link Err}, and returns the unwrapped value.
+ * @param result The result to assert.
+ * @returns The unwrapped {@link Err} value.
+ * @throws {Error} If the result is an {@link Ok}.
+ *
+ * @example
+ * ```ts
+ * let result: Result<string, Error>;
+ * let errVal = assertErr(result); // <- May throw if the result is an Ok.
+ * // -> Error
+ * ```
+ */
+export function assertErr<A, B>(result: Result<A, B>): B;
+export function assertErr<A, B>(result: AsyncResult<A, B>): Promise<B>;
+export function assertErr<A, B>(result: ResultLike<A, B>) {
+  if (AsyncResult.is(result))
+    return result.then((res) => {
+      if (res.err) return Promise.resolve(res.unwrapErr());
+
+      return Promise.reject(
+        new Error(
+          "Expected result to be of type Err, but received Ok instead.",
+        ),
+      );
+    });
+
+  if (result.err) return result.unwrapErr();
+
+  throw new Error(
+    "Expected result to be of type Err, but received Ok instead.",
+  );
 }
 
 /**
@@ -64,7 +132,7 @@ export function flatten<A, B>(result: AsyncResult<MaybeAsyncResult<A, B>, B>): A
 export function flatten<A, B>(
   result: Result<Result<A, B>, B> | AsyncResult<MaybeAsyncResult<A, B>, B>,
 ): Result<A, B> | AsyncResult<A, B> {
-  if (isResult(result)) return result.ok ? result.val : result;
+  if (isResult(result)) return result.ok ? result.unwrap() : result;
 
   return createAsyncResultFrom(result, (res) => (res.ok ? res.unwrap() : res));
 }
@@ -87,7 +155,7 @@ export function isResult(result: unknown): result is Result<unknown, unknown> {
  * @returns A boolean indicating if the value is an {@link Ok}.
  */
 export function isOk(result: unknown): result is Ok<unknown> {
-  return result instanceof OkClass;
+  return result instanceof Ok;
 }
 
 /**
@@ -97,7 +165,7 @@ export function isOk(result: unknown): result is Ok<unknown> {
  * @returns A boolean indicating if the value is an {@link Err}.
  */
 export function isErr(result: unknown): result is Err<unknown> {
-  return result instanceof ErrClass;
+  return result instanceof Err;
 }
 
 /**
@@ -130,8 +198,8 @@ export function partition<A, B>(
   const err = [];
 
   for (const result of results)
-    if (result.ok) ok.push(result.val);
-    else err.push(result.val);
+    if (result.ok) ok.push(result.unwrap());
+    else err.push(result.unwrapErr());
 
   return [ok, err];
 }
@@ -190,7 +258,7 @@ export function unwrapBoth<A>(result: AsyncResult<A, A>): Promise<A>;
 export function unwrapBoth<A>(
   result: Result<A, A> | AsyncResult<A, A>,
 ): MaybePromise<A> {
-  return result.val;
+  return result._val;
 }
 
 /**
@@ -206,7 +274,7 @@ export function unwrapBothUnsafe<A, B>(
 export function unwrapBothUnsafe<A, B>(
   result: Result<A, B> | AsyncResult<A, B>,
 ): MaybePromise<A | B> {
-  return result.val;
+  return result._val;
 }
 
 /**
@@ -246,11 +314,11 @@ export function use<A, B>(
 ): Result<A, B> | AsyncResult<A, B> {
   const res = callback().next();
   if (!(res instanceof Promise))
-    return res.done ? Ok(res.value) : Err(res.value);
+    return res.done ? new Ok(res.value) : new Err(res.value);
 
   return AsyncResult.from(
     res.then((awaited) =>
-      awaited.done ? Ok(awaited.value) : Err(awaited.value),
+      awaited.done ? new Ok(awaited.value) : new Err(awaited.value),
     ),
   );
 }
@@ -277,7 +345,7 @@ export function values<A, B>(
     return Promise.all(results).then((arr) => values(arr));
 
   const val: A[] = [];
-  for (const result of results) if (result.ok) val.push(result.val);
+  for (const result of results) if (result.ok) val.push(result.unwrap());
   return val;
 }
 
@@ -306,17 +374,17 @@ export function wrap<B = Error, A = any>(
   try {
     const returned = callback();
     if (!(returned instanceof Promise))
-      return Ok(returned) as AutoDetermineResult<A, B>;
+      return new Ok(returned) as AutoDetermineResult<A, B>;
 
     return AsyncResult.from(
       new Promise((resolve) => {
         returned
-          .then((val) => resolve(Ok(val)))
-          .catch((err) => resolve(Err(err)));
+          .then((val) => resolve(new Ok(val)))
+          .catch((err) => resolve(new Err(err)));
       }),
     ) as AutoDetermineResult<A, B>;
   } catch (error) {
-    return Err(error) as AutoDetermineResult<A, B>;
+    return new Err(error) as AutoDetermineResult<A, B>;
   }
 }
 
@@ -329,11 +397,11 @@ export async function wrapAsync<A, E = Error>(
   try {
     return new Promise((resolve) => {
       callback().then(
-        (v) => resolve(Ok(v)),
-        (e) => resolve(Err(e)),
+        (v) => resolve(new Ok(v)),
+        (e) => resolve(new Err(e)),
       );
     });
   } catch (error) {
-    return Err(error as E);
+    return new Err(error as E);
   }
 }

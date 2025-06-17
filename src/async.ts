@@ -3,16 +3,20 @@ import type {
   MaybeAsyncResult,
   Pair,
   AsyncYields,
+  Tagged,
 } from "./types";
 import type { Result } from "./result";
 import { Ok, Err } from "./result";
 
 export class AsyncResult<A, B>
   extends Promise<Result<A, B>>
-  implements AsyncYields<A, B>
+  implements AsyncYields<A, B>, Tagged<"AsyncResult">
 {
-  get val(): Promise<A | B> {
-    return super.then((res) => res.val);
+  readonly _tag = "AsyncResult";
+  readonly _type = "Async";
+
+  get _val(): Promise<A | B> {
+    return super.then((res) => res._val);
   }
 
   get ok(): Promise<boolean> {
@@ -64,12 +68,12 @@ export class AsyncResult<A, B>
   }
 
   tap(callback: (val: A) => MaybePromise<void>): this {
-    super.then((res) => res.ok && callback(res.val));
+    super.then((res) => res.ok && callback(res._val));
     return this;
   }
 
   tapErr(callback: (val: B) => MaybePromise<void>): this {
-    super.then((res) => res.err && callback(res.val));
+    super.then((res) => res.err && callback(res._val));
     return this;
   }
 
@@ -117,12 +121,16 @@ export class AsyncResult<A, B>
     );
   }
 
-  static ok<A>(val: A): AsyncResult<A, never> {
-    return new AsyncResult<A, never>((resolve) => resolve(Ok(val)));
+  static ok<A>(val: A | Promise<A>): AsyncResult<A, never> {
+    return new AsyncResult<A, never>((resolve) =>
+      Promise.resolve(val).then((v) => resolve(new Ok(v))),
+    );
   }
 
-  static err<B>(val: B): AsyncResult<never, B> {
-    return new AsyncResult<never, B>((resolve) => resolve(Err(val)));
+  static err<B>(val: B | Promise<B>): AsyncResult<never, B> {
+    return new AsyncResult<never, B>((resolve) =>
+      Promise.resolve(val).then((v) => resolve(new Err(v))),
+    );
   }
 
   /**
@@ -156,9 +164,8 @@ export class AsyncResult<A, B>
 export async function flattenResultPromise<A, B>(
   res: Result<A, B>,
 ): Promise<Result<Awaited<A>, Awaited<B>>> {
-  const val = await res.val;
-  if (res.ok) return Ok(val as Awaited<A>);
-  else return Err(val as Awaited<B>);
+  if (res.ok) return new Ok(res._val as Awaited<A>);
+  else return new Err(res._val as Awaited<B>);
 }
 
 export function createAsyncResult<A, B>(
