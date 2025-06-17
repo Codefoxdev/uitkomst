@@ -9,11 +9,17 @@ import type {
 import { isPromise } from "./helper";
 import { AsyncResult } from "./async";
 
-export function Ok_<A>(val: A): Ok<A> {
+export function Ok_(): Ok<void>;
+export function Ok_<A>(val: A): Ok<A>;
+export function Ok_<A>(val?: A) {
+  if (val === undefined) return new Ok(undefined);
   return new Ok(val);
 }
 
-export function Err_<B>(val: B): Err<B> {
+export function Err_(): Err<void>;
+export function Err_<B>(val: B): Err<B>;
+export function Err_<B>(val?: B) {
+  if (val === undefined) return new Err(undefined);
   return new Err(val);
 }
 
@@ -150,7 +156,9 @@ export class Ok<A> extends Result_<A, never> {
   }
 
   tap(callback: (val: Awaited<A>) => void): this {
-    this.promise.then(callback);
+    if (isPromise(this._val)) this.promise.then(callback);
+    else callback(this._val as Awaited<A>);
+
     return this;
   }
 
@@ -257,7 +265,9 @@ export class Err<B> extends Result_<never, B> {
   }
 
   tapErr(callback: (val: Awaited<B>) => void): Err<B> {
-    this.promise.then(callback);
+    if (isPromise(this._val)) this.promise.then(callback);
+    else callback(this._val as Awaited<B>);
+
     return this;
   }
 
