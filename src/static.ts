@@ -1,4 +1,4 @@
-import type { MaybeAsyncResult, MaybePromise, Pair } from "./types";
+import type { MaybeAsyncResult, MaybePromise, Pair, ResultLike } from "./types";
 import type { Result } from "./index";
 import { AsyncResult, createAsyncResultFrom } from "./async";
 import { Ok, Err } from "./result";
@@ -37,6 +37,74 @@ export function all<A, B>(
     else return result;
 
   return new Ok(values);
+}
+
+/**
+ * Asserts that a result is an {@link Ok}, and returns the unwrapped value.
+ * @param result The result to assert.
+ * @returns The unwrapped {@link Ok} value.
+ * @throws {Error} If the result is an {@link Err}.
+ *
+ * @example
+ * ```ts
+ * let result: Result<string, Error>;
+ * let okVal = assertOk(result); // <- May throw if the result is an Err.
+ * // -> string
+ * ```
+ */
+export function assertOk<A, B>(result: Result<A, B>): A;
+export function assertOk<A, B>(result: AsyncResult<A, B>): Promise<A>;
+export function assertOk<A, B>(result: ResultLike<A, B>) {
+  if (AsyncResult.is(result))
+    return result.then((res) => {
+      if (res.ok) return Promise.resolve(res.unwrap());
+
+      return Promise.reject(
+        new Error(
+          "Expected result to be of type Ok, but received Err instead.",
+        ),
+      );
+    });
+
+  if (result.ok) return result.unwrap();
+
+  throw new Error(
+    "Expected result to be of type Ok, but received Err instead.",
+  );
+}
+
+/**
+ * Asserts that a result is an {@link Err}, and returns the unwrapped value.
+ * @param result The result to assert.
+ * @returns The unwrapped {@link Err} value.
+ * @throws {Error} If the result is an {@link Ok}.
+ *
+ * @example
+ * ```ts
+ * let result: Result<string, Error>;
+ * let errVal = assertErr(result); // <- May throw if the result is an Ok.
+ * // -> Error
+ * ```
+ */
+export function assertErr<A, B>(result: Result<A, B>): B;
+export function assertErr<A, B>(result: AsyncResult<A, B>): Promise<B>;
+export function assertErr<A, B>(result: ResultLike<A, B>) {
+  if (AsyncResult.is(result))
+    return result.then((res) => {
+      if (res.err) return Promise.resolve(res.unwrapErr());
+
+      return Promise.reject(
+        new Error(
+          "Expected result to be of type Err, but received Ok instead.",
+        ),
+      );
+    });
+
+  if (result.err) return result.unwrapErr();
+
+  throw new Error(
+    "Expected result to be of type Err, but received Ok instead.",
+  );
 }
 
 /**
