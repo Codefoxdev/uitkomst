@@ -2,6 +2,7 @@ import type { MaybeAsyncResult, MaybePromise, Pair, ResultLike } from "./types";
 import type { Result } from "./index";
 import { AsyncResult, createAsyncResultFrom } from "./async";
 import { Ok, Err } from "./result";
+import { AssertError } from "./error";
 
 /**
  * Combines an array of results into one.
@@ -60,16 +61,18 @@ export function assertOk<A, B>(result: ResultLike<A, B>) {
       if (res.ok) return Promise.resolve(res.unwrap());
 
       return Promise.reject(
-        new Error(
-          "Expected result to be of type Ok, but received Err instead.",
+        new AssertError(
+          "Expected Ok, but received Err instead.",
+          res,
         ),
       );
     });
 
   if (result.ok) return result.unwrap();
 
-  throw new Error(
-    "Expected result to be of type Ok, but received Err instead.",
+  throw new AssertError(
+    "Expected Ok, but received Err instead.",
+    result,
   );
 }
 
@@ -94,16 +97,18 @@ export function assertErr<A, B>(result: ResultLike<A, B>) {
       if (res.err) return Promise.resolve(res.unwrapErr());
 
       return Promise.reject(
-        new Error(
-          "Expected result to be of type Err, but received Ok instead.",
+        new AssertError(
+          "Expected Err, but received Ok instead.",
+          res
         ),
       );
     });
 
   if (result.err) return result.unwrapErr();
 
-  throw new Error(
-    "Expected result to be of type Err, but received Ok instead.",
+  throw new AssertError(
+    "Expected Err, but received Ok instead.",
+    result
   );
 }
 

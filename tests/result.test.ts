@@ -1,6 +1,5 @@
 import { describe, test, expect, vi } from "vitest";
-import { Ok, Err, AsyncResult } from "../src/index";
-import { Ok as OkClass, Err as ErrClass } from "../src/result";
+import { Ok, Err, AsyncResult, OkClass, ErrClass } from "../src/index";
 
 describe("Result contructors", () => {
   describe("Ok contructor", () => {
