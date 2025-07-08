@@ -121,7 +121,11 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Ok" | "Err"> {
    */
   abstract unwrapErr(fallback: B): B;
 
-  *[Symbol.iterator](this: Result<A, B>) {
+  /**
+   * See documentation on the `use` method, for how to use this method.
+   * @internal
+   */
+  *[Symbol.iterator](this: Result<A, B>): Generator<B, A, unknown> {
     if (this.ok) return this.unwrap();
 
     yield this.unwrapErr();
