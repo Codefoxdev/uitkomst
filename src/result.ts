@@ -33,9 +33,8 @@ export type Result<A, B> = Ok<A> | Err<B>;
 export type Ok_<A> = Result<A, never>;
 export type Err_<B> = Result<never, B>;
 
-abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
-  readonly _tag = "Result";
-  declare readonly _type: "Ok" | "Err" | "Async";
+abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Ok" | "Err"> {
+  declare readonly _tag: "Ok" | "Err";
   declare readonly _val: A | B;
   abstract get ok(): boolean;
   abstract get err(): boolean;
@@ -116,7 +115,7 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
 }
 
 export class Ok<A> extends Result_<A, never> {
-  override readonly _type = "Ok";
+  override readonly _tag = "Ok";
   override readonly ok = true;
   override readonly err = false;
 
@@ -221,7 +220,7 @@ export class Ok<A> extends Result_<A, never> {
 }
 
 export class Err<B> extends Result_<never, B> {
-  override readonly _type = "Err";
+  override readonly _tag = "Err";
   override readonly ok = false;
   override readonly err = true;
 

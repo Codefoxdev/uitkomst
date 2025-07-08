@@ -13,7 +13,6 @@ export class AsyncResult<A, B>
   implements AsyncYields<A, B>, Tagged<"AsyncResult">
 {
   readonly _tag = "AsyncResult";
-  readonly _type = "Async";
 
   get _val(): Promise<A | B> {
     return super.then((res) => res._val);
