@@ -44,7 +44,7 @@ export function all<A, B>(
  * Asserts that a result is an {@link Ok}, and returns the unwrapped value.
  * @param result The result to assert.
  * @returns The unwrapped {@link Ok} value.
- * @throws {Error} If the result is an {@link Err}.
+ * @throws {AssertError} If the result is an {@link Err}.
  *
  * @example
  * ```ts
@@ -61,26 +61,20 @@ export function assertOk<A, B>(result: ResultLike<A, B>) {
       if (res.ok) return Promise.resolve(res.unwrap());
 
       return Promise.reject(
-        new AssertError(
-          "Expected Ok, but received Err instead.",
-          res,
-        ),
+        new AssertError("Expected Ok, but received Err instead.", res),
       );
     });
 
   if (result.ok) return result.unwrap();
 
-  throw new AssertError(
-    "Expected Ok, but received Err instead.",
-    result,
-  );
+  throw new AssertError("Expected Ok, but received Err instead.", result);
 }
 
 /**
  * Asserts that a result is an {@link Err}, and returns the unwrapped value.
  * @param result The result to assert.
  * @returns The unwrapped {@link Err} value.
- * @throws {Error} If the result is an {@link Ok}.
+ * @throws {AssertError} If the result is an {@link Ok}.
  *
  * @example
  * ```ts
@@ -97,19 +91,13 @@ export function assertErr<A, B>(result: ResultLike<A, B>) {
       if (res.err) return Promise.resolve(res.unwrapErr());
 
       return Promise.reject(
-        new AssertError(
-          "Expected Err, but received Ok instead.",
-          res
-        ),
+        new AssertError("Expected Err, but received Ok instead.", res),
       );
     });
 
   if (result.err) return result.unwrapErr();
 
-  throw new AssertError(
-    "Expected Err, but received Ok instead.",
-    result
-  );
+  throw new AssertError("Expected Err, but received Ok instead.", result);
 }
 
 /**

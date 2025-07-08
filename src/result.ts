@@ -5,10 +5,11 @@ import type {
   PromiseIf,
   MaybePromise,
   ResultLike,
+  Trace,
 } from "./types";
 import { isPromise } from "./helper";
 import { AsyncResult } from "./async";
-import { YieldError } from "./error";
+import { AssertError, YieldError } from "./error";
 
 export function Ok_(): Ok<void>;
 export function Ok_<A>(val: A): Ok<A>;
@@ -36,8 +37,26 @@ export type Err_<B> = Result<never, B>;
 abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Ok" | "Err"> {
   declare readonly _tag: "Ok" | "Err";
   declare readonly _val: A | B;
+  readonly _stack: Trace[] = [];
+
   abstract get ok(): boolean;
   abstract get err(): boolean;
+
+  /**
+   * Asserts that this result is an {@link Ok}, and returns the unwrapped value.
+   * @param message Optionally provide a custom error message.
+   * @returns The unwrapped {@link Ok} value.
+   * @throws {AssertError} If the result is an {@link Err}.
+   */
+  abstract assertOk(message?: string): A;
+
+  /**
+   * Asserts that this result is an {@link Err}, and returns the unwrapped value.
+   * @param message Optionally provide a custom error message.
+   * @returns The unwrapped {@link Err} value.
+   * @throws {AssertError} If the result is an {@link Ok}.
+   */
+  abstract assertErr(message?: string): B;
 
   abstract lazyOr(callback: () => Result<A, B>): Result<A, B>;
   abstract lazyUnwrap(callback: () => A): A;
@@ -112,6 +131,12 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Ok" | "Err"> {
   protected get promise(): Promise<Awaited<this["_val"]>> {
     return Promise.resolve(this._val);
   }
+
+  // Tracing
+
+  abstract trace(id: string): this;
+
+  abstract _inheritStack(stack: Trace[]): this;
 }
 
 export class Ok<A> extends Result_<A, never> {
@@ -121,6 +146,17 @@ export class Ok<A> extends Result_<A, never> {
 
   constructor(override readonly _val: A) {
     super();
+  }
+
+  assertOk(): A {
+    return this._val;
+  }
+
+  assertErr(message?: string): never {
+    throw new AssertError(
+      message ?? "Expected Err, but received Ok instead.",
+      this,
+    );
   }
 
   lazyOr(): Ok<A> {
@@ -217,6 +253,14 @@ export class Ok<A> extends Result_<A, never> {
   unwrapErr<B>(fallback: B): B {
     return fallback;
   }
+
+  trace(): this {
+    return this;
+  }
+
+  _inheritStack(): this {
+    return this;
+  }
 }
 
 export class Err<B> extends Result_<never, B> {
@@ -224,8 +268,22 @@ export class Err<B> extends Result_<never, B> {
   override readonly ok = false;
   override readonly err = true;
 
-  constructor(override readonly _val: B) {
+  constructor(
+    override readonly _val: B,
+    override readonly _stack: Trace[] = [],
+  ) {
     super();
+  }
+
+  assertOk(message?: string): never {
+    throw new AssertError(
+      message ?? "Expected Ok, but received Err instead.",
+      this,
+    );
+  }
+
+  assertErr(): B {
+    return this._val;
   }
 
   lazyOr<A>(callback: () => Result<A, B>): Result<A, B> {
@@ -242,8 +300,15 @@ export class Err<B> extends Result_<never, B> {
 
   mapErr<C>(callback: (val: Awaited<B>) => C): Err<PromiseIf<B, C>> {
     if (isPromise(this._val))
-      return new Err(this.promise.then(callback) as PromiseIf<B, C>);
-    else return new Err(callback(this._val as Awaited<B>) as PromiseIf<B, C>);
+      return new Err(
+        this.promise.then(callback) as PromiseIf<B, C>,
+        this._stack,
+      );
+    else
+      return new Err(
+        callback(this._val as Awaited<B>) as PromiseIf<B, C>,
+        this._stack,
+      );
   }
 
   or<A>(fallback: Result<A, B>): Result<A, B> {
@@ -295,7 +360,7 @@ export class Err<B> extends Result_<never, B> {
    * Use `TryRecoverAsync` when dealing with async values.
    */
   tryRecover<R extends Result<any, any>>(callback: (val: B) => R): R {
-    return callback(this._val);
+    return callback(this._val)._inheritStack(this._stack) as R;
   }
 
   /**
@@ -321,5 +386,16 @@ export class Err<B> extends Result_<never, B> {
 
   unwrapErr(): B {
     return this._val;
+  }
+
+  trace(id: string): this {
+    const trace: Trace = { id };
+    this._stack.push(trace);
+    return this;
+  }
+
+  _inheritStack(stack: Trace[]): this {
+    this._stack.unshift(...stack);
+    return this;
   }
 }
