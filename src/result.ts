@@ -8,6 +8,7 @@ import type {
 } from "./types";
 import { isPromise } from "./helper";
 import { AsyncResult } from "./async";
+import { YieldError } from "./error";
 
 export function Ok_(): Ok<void>;
 export function Ok_<A>(val: A): Ok<A>;
@@ -106,9 +107,7 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Result"> {
     if (this.ok) return this.unwrap();
 
     yield this.unwrapErr();
-    throw new Error(
-      "Err value iterator fully consumed. This iterator is designed to yield its error value and then terminate execution flow.",
-    );
+    throw new YieldError({ _tag: "Result" });
   }
 
   protected get promise(): Promise<Awaited<this["_val"]>> {

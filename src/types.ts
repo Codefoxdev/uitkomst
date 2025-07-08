@@ -32,7 +32,9 @@ export interface AsyncYields<A, B> {
   [Symbol.asyncIterator](): AsyncGenerator<B, A, unknown>;
 }
 
-export interface Tagged<T> {
+export type Tag = string | symbol;
+
+export interface Tagged<T extends Tag> {
   readonly _tag: T;
 }
 
@@ -88,16 +90,3 @@ export type ExtractErr<T> = T extends Err<infer E> ? E : never;
  * ```
  */
 export type ExtractValue<T> = ExtractOk<T> | ExtractErr<T>;
-
-export type FlattenPromiseResult<
-  R extends Result<MaybePromise<any>, MaybePromise<any>>,
-> = ExtractOk<R> extends Promise<any>
-  ? Promise<Result<ExtractOk<R>, ExtractErr<R>>>
-  : ExtractErr<R> extends Promise<any>
-    ? Promise<Result<ExtractOk<R>, ExtractErr<R>>>
-    : Result<ExtractOk<R>, ExtractErr<R>>;
-
-export type DistributePromiseResult<R extends MaybePromise<Result<any, any>>> =
-  R extends Promise<infer R_>
-    ? Result<Promise<ExtractOk<R_>>, Promise<ExtractErr<R_>>>
-    : Result<ExtractOk<R>, ExtractErr<R>>;
