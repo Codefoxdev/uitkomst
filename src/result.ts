@@ -82,6 +82,9 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Ok" | "Err"> {
    */
   abstract or(fallback: Result<A, B>): Result<A, B>;
 
+  abstract pipe(...callback: ((val: A) => Result<A, B>)[]): Result<A, B>;
+  //abstract pipeAsync(...callback: ((val: Awaited<A>) => MaybePromise<A>)[]): AsyncResult<Awaited<A>, Awaited<B>>;
+
   /**
    * Replaces the value held within the `Ok` of this result with the `val` argument.
    * If this is an `Err` rather than `Ok`, the value is not replaced and this `Result` stays the same.
@@ -183,6 +186,14 @@ export class Ok<A> extends Result_<A, never> {
 
   or(): Ok<A> {
     return this;
+  }
+
+  pipe<C>(...callback: ((val: A) => Result<A, C>)[]): Result<A, C> {
+    if (callback.length === 0) return this;
+
+    const fn = callback.shift()!;
+    const res = fn(this._val);
+    return res.pipe(...callback);
   }
 
   replace<C>(val: C): Ok<C> {
@@ -317,6 +328,10 @@ export class Err<B> extends Result_<never, B> {
 
   or<A>(fallback: Result<A, B>): Result<A, B> {
     return fallback;
+  }
+
+  pipe(): Err<B> {
+    return this;
   }
 
   replace(): Err<B> {
