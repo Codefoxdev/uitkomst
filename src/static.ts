@@ -14,9 +14,9 @@ import { AssertError } from "./error";
  *
  * @example
  * ```ts
- * result.all([Ok(1), Ok(2), Ok(3)])
+ * all([Ok(1), Ok(2), Ok(3)])
  * // -> Ok([1, 2, 3])
- * result.all([Err("first"), Ok(2), Err("second")])
+ * all([Err("first"), Ok(2), Err("second")])
  * // -> Err("first")
  * ```
  */
@@ -42,6 +42,7 @@ export function all<A, B>(
 
 /**
  * Asserts that a result is an {@link Ok}, and returns the unwrapped value.
+ *
  * @param result The result to assert.
  * @returns The unwrapped {@link Ok} value.
  * @throws {AssertError} If the result is an {@link Err}.
@@ -72,6 +73,7 @@ export function assertOk<A, B>(result: ResultLike<A, B>) {
 
 /**
  * Asserts that a result is an {@link Err}, and returns the unwrapped value.
+ *
  * @param result The result to assert.
  * @returns The unwrapped {@link Err} value.
  * @throws {AssertError} If the result is an {@link Ok}.
@@ -108,11 +110,11 @@ export function assertErr<A, B>(result: ResultLike<A, B>) {
  *
  * @example
  * ```ts
- * result.flatten(Ok(Ok(1)))
+ * flatten(Ok(Ok(1)))
  * // -> Ok(1)
- * result.flatten(Ok(Err("")))
+ * flatten(Ok(Err("")))
  * // -> Err("")
- * result.flatten(Err(""))
+ * flatten(Err(""))
  * // -> Err("")
  ```
  */
@@ -171,7 +173,7 @@ export function isErr(result: unknown): result is Err<unknown> {
  *
  * @example
  * ```ts
- * result.partition([Ok(1), Error("a"), Error("b"), Ok(2)])
+ * partition([Ok(1), Error("a"), Error("b"), Ok(2)])
  * // -> [[1, 2], ["a", "b"]]
  * ```
  */
@@ -211,12 +213,12 @@ type AutoDetermineResult<A, B> = A extends Promise<infer P>
  *
  * @example
  * ```ts
- * const fn = result.proxy(fs.writeFileSync)
+ * const fn = proxy(fs.writeFileSync)
  * fn("file.txt", "Data to write to file", "utf-8")
  * // -> Result<undefined, Error>
  *
  * // Optionally: the error type can be specified as the first generic parameter.
- * const typedFn = result.proxy<TypeError>(someMethodThatThrows)
+ * const typedFn = proxy<TypeError>(someMethodThatThrows)
  * typedFn(someMethodArgs)
  * // -> Result<someReturnType, TypeError>
  * ```
@@ -240,9 +242,9 @@ export function proxy<B = Error, C extends Callback = Callback>(
  *
  * @example
  * ```ts
- * result.values(Ok(1))
+ * unwrapBoth(Ok(1))
  * // -> 1
- * result.values(Err(2))
+ * unwrapBoth(Err(2))
  * // -> 2
  * ```
  */
@@ -255,7 +257,7 @@ export function unwrapBoth<A>(
 }
 
 /**
- * The same as `result.unwrapBoth`, but this one doesn't require the {@link Ok} and {@link Err} values to be of the same type.
+ * The same as {@link unwrapBoth}, but this one doesn't require the {@link Ok} and {@link Err} values to be of the same type.
  *
  * @param result The result to unwrap, also supports {@link AsyncResult}
  * @returns The inner value of the result
@@ -285,8 +287,8 @@ export function unwrapBothUnsafe<A, B>(
  * const num2: Result<number, Error>;
  *
  * // With result chaining
- * const res1: Result<number, Error> = result
- *   .all([num1, num2])
+ * const res1: Result<number, Error> =
+ *   all([num1, num2])
  *   .map((arr) => arr[0] + arr[1]);
  *
  * // With use
@@ -325,7 +327,7 @@ export function use<A, B>(
  *
  * @example
  * ```ts
- * result.values([Ok(1), Err("error"), Ok(3)])
+ * values([Ok(1), Err("error"), Ok(3)])
  * // -> [1, 3]
  * ```
  */
@@ -351,9 +353,9 @@ export function values<A, B>(
  *
  * @example
  * ```ts
- * result.wrap(() => 1)
+ * wrap(() => 1)
  * // -> Ok(1)
- * result.wrap(() => { throw new Error('error') })
+ * wrap(() => { throw new Error('error') })
  * // -> Err(Error('error'))
  * ```
  *

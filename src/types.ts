@@ -92,5 +92,5 @@ export type ExtractErr<T> = T extends Err<infer E> ? E : never;
 export type ExtractValue<T> = ExtractOk<T> | ExtractErr<T>;
 
 export interface Trace {
-  readonly id: string;
+  readonly id: Tag;
 }
