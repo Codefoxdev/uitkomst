@@ -7,7 +7,6 @@ describe("Result contructors", () => {
       const res = Ok(42);
       expect(res).toBeInstanceOf(OkClass);
       expect(res._val).toBe(42);
-      expect(res._type).toBe("Ok");
       expect(res.ok).toBe(true);
       expect(res.err).toBe(false);
     });
@@ -24,7 +23,6 @@ describe("Result contructors", () => {
       const res = Err("error");
       expect(res).toBeInstanceOf(ErrClass);
       expect(res._val).toBe("error");
-      expect(res._type).toBe("Err");
       expect(res.ok).toBe(false);
       expect(res.err).toBe(true);
     });

@@ -336,7 +336,7 @@ export class Ok<A> extends Result_<A, never> {
   /**
    * Async version of `try`.
    */
-  tryAsync<R extends MaybePromise<Tagged<"Result">>>(
+  tryAsync<R extends MaybePromise<Tagged<"Ok" | "Err">>>(
     callback: (val: Awaited<A>) => R,
   ): R extends MaybePromise<ResultLike<infer Ok, infer Err>>
     ? AsyncResult<Ok, Err>
@@ -541,7 +541,7 @@ export class Err<B> extends Result_<never, B> {
   /**
    * Async version of `tryRecover`.
    */
-  tryRecoverAsync<R extends MaybePromise<Tagged<"Result">>>(
+  tryRecoverAsync<R extends MaybePromise<Tagged<"Ok" | "Err">>>(
     callback: (val: Awaited<B>) => R,
   ): R extends MaybePromise<ResultLike<infer Ok, infer Err>>
     ? AsyncResult<Ok, Err>

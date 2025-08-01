@@ -1,0 +1,10 @@
+{
+  "name": "@uitkomst/core",
+  "version": "0.3.1",
+  "type": "module",
+  "license": "MIT",
+  "author": "Codefoxdev",
+  "description": "",
+  "keywords": [],
+  "main": "src/index.ts"
+}

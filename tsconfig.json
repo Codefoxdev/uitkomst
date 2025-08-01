@@ -1,5 +1,5 @@
 {
-  "include": ["src"],
+  "include": ["packages/*/src"],
   "compilerOptions": {
     "target": "es2018",
     "module": "Preserve",

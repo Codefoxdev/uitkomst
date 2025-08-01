@@ -1,14 +1,8 @@
 {
-  "name": "uitkomst",
-  "version": "0.3.1",
-  "description": "",
+  "name": "@uitkomst/monorepo",
+  "private": true,
   "type": "module",
-  "keywords": [],
-  "author": "Codefoxdev",
-  "license": "MIT",
-  "main": "src/index.ts",
   "scripts": {
-    "build": "unbuild",
     "tsc": "tsc",
     "lint": "oxlint",
     "test": "vitest",
