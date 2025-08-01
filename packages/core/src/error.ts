@@ -1,4 +1,4 @@
-import type { Tagged, Tag } from "./types";
+import type { Tag, Tagged } from "./types";
 
 export class AssertError extends Error implements Tagged<"AssertError"> {
   override readonly name = "AssertError";

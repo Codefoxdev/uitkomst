@@ -1,24 +1,24 @@
+export type { Result } from "./result";
 export type {
+  AsyncYields,
   ExtractErr,
   ExtractOk,
   ExtractValue,
   Pair,
   ResultLike,
-  Yields,
-  Tagged,
   Tag,
-  AsyncYields,
+  Tagged,
+  Yields,
 } from "./types";
-export type { Result } from "./result";
+export { AsyncResult } from "./async";
+export { AssertError } from "./error";
 export {
-  Ok_ as Ok,
+  Err as ErrClass,
   Err_ as Err,
   Ok as OkClass,
-  Err as ErrClass,
+  Ok_ as Ok,
 } from "./result";
-export { AsyncResult } from "./async";
 export * from "./static";
-export { AssertError } from "./error";
 
 // Export static methods as a namespace for convenience
 import * as _result from "./static";

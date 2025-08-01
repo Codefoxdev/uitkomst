@@ -1,8 +1,8 @@
-import type { MaybeAsyncResult, MaybePromise, Pair, ResultLike } from "./types";
 import type { Result } from "./index";
+import type { MaybeAsyncResult, MaybePromise, Pair, ResultLike } from "./types";
 import { AsyncResult, createAsyncResultFrom } from "./async";
-import { Ok, Err } from "./result";
 import { AssertError } from "./error";
+import { Err, Ok } from "./result";
 
 /**
  * Combines an array of results into one.
@@ -123,7 +123,9 @@ export function flatten<A, B>(result: Result<Result<A, B>, B>): Result<A, B>;
  * @overload Asynchronous version of the {@link partition} method.
  */
 // biome-ignore format:
-export function flatten<A, B>(result: AsyncResult<MaybeAsyncResult<A, B>, B>): AsyncResult<A, B>;
+export function flatten<A, B>(
+  result: AsyncResult<MaybeAsyncResult<A, B>, B>,
+): AsyncResult<A, B>;
 export function flatten<A, B>(
   result: Result<Result<A, B>, B> | AsyncResult<MaybeAsyncResult<A, B>, B>,
 ): Result<A, B> | AsyncResult<A, B> {
@@ -182,7 +184,9 @@ export function partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]>;
  * @overload Asynchronous version of the {@link partition} method.
  */
 // biome-ignore format:
-export function partition<A, B>(results: AsyncResult<A, B>[]): Promise<Pair<A[], B[]>>;
+export function partition<A, B>(
+  results: AsyncResult<A, B>[],
+): Promise<Pair<A[], B[]>>;
 export function partition<A, B>(
   results: Result<A, B>[] | AsyncResult<A, B>[],
 ): Pair<A[], B[]> | Promise<Pair<A[], B[]>> {

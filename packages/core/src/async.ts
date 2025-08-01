@@ -1,12 +1,12 @@
+import type { Result } from "./result";
 import type {
-  MaybePromise,
-  MaybeAsyncResult,
-  Pair,
   AsyncYields,
+  MaybeAsyncResult,
+  MaybePromise,
+  Pair,
   Tagged,
 } from "./types";
-import type { Result } from "./result";
-import { Ok, Err } from "./result";
+import { Err, Ok } from "./result";
 
 export class AsyncResult<A, B>
   extends Promise<Result<A, B>>

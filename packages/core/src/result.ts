@@ -8,9 +8,9 @@ import type {
   Trace,
   Tag,
 } from "./types";
-import { isPromise } from "./helper";
 import { AsyncResult } from "./async";
 import { AssertError, YieldError } from "./error";
+import { isPromise } from "./helper";
 
 /**
  * Creates a new {@link Ok} object.
