@@ -1,9 +1,9 @@
 export type { Result } from "./result";
 export type {
   AsyncYields,
-  ExtractErr,
-  ExtractOk,
-  ExtractValue,
+  InferErr,
+  InferOk,
+  InferValue,
   Pair,
   ResultLike,
   Tag,
@@ -12,12 +12,7 @@ export type {
 } from "./types";
 export { AsyncResult } from "./async";
 export { AssertError } from "./error";
-export {
-  Err as ErrClass,
-  Err_ as Err,
-  Ok as OkClass,
-  Ok_ as Ok,
-} from "./result";
+export { AbstractResult, Err, Ok } from "./result";
 export * from "./static";
 
 // Export static methods as a namespace for convenience
