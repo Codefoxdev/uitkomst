@@ -1,36 +1,18 @@
 import type {
+  InferErr,
+  InferOk,
   Pair,
-  Yields,
-  Tagged,
   PromiseIf,
-  MaybePromise,
-  ResultLike,
-  Trace,
   Tag,
+  Tagged,
+  Trace,
+  Yieldable,
+  Yields,
 } from "./types";
 import { AsyncResult } from "./async";
-import { AssertError, YieldError } from "./error";
-import { isPromise } from "./helper";
-
-/**
- * Creates a new {@link Ok} object.
- */
-export function Ok_(): Ok<void>;
-export function Ok_<A>(val: A): Ok<A>;
-export function Ok_<A>(val?: A) {
-  if (val === undefined) return new Ok(undefined);
-  return new Ok(val);
-}
-
-/**
- * Creates a new {@link Err} object.
- */
-export function Err_(): Err<void>;
-export function Err_<B>(val: B): Err<B>;
-export function Err_<B>(val?: B) {
-  if (val === undefined) return new Err(undefined);
-  return new Err(val);
-}
+import { AssertError, ExpectedResultError, YieldError } from "./error";
+import { isPromise, isPromisefn } from "./helper";
+import { isResult } from "./static";
 
 /**
  * The `Result` type represents a value that can be either a success (`Ok`) or a failure (`Err`).
@@ -38,16 +20,24 @@ export function Err_<B>(val?: B) {
  * and the properties are in camelCase instead of snake_case to follow JavaScript conventions.
  */
 export type Result<A, B> = Ok<A> | Err<B>;
-export type Ok_<A> = Result<A, never>;
-export type Err_<B> = Result<never, B>;
 
-abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Ok" | "Err"> {
-  declare readonly _tag: "Ok" | "Err";
+/**
+ * The abstract result class on which the {@link Ok} and {@link Err} classes are based.
+ *
+ * @template A The `Ok` value of this result.
+ * @template B The `Err` value of this result.
+ *
+ * @package This is an internal class and should not be used directly.
+ */
+export abstract class AbstractResult<A, B>
+  implements Yieldable<A, B>, Tagged<"Result">
+{
   declare readonly _val: A | B;
+  readonly _tag = "Result";
   readonly _stack: Trace[] = [];
 
-  abstract get ok(): boolean;
-  abstract get err(): boolean;
+  declare readonly ok: boolean;
+  declare readonly err: boolean;
 
   /**
    * Asserts that this result is an {@link Ok}, and returns the unwrapped value.
@@ -114,17 +104,6 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Ok" | "Err"> {
   abstract or(fallback: Result<A, B>): Result<A, B>;
 
   /**
-   * Pipes this result through a list of transformer callbacks.
-   * The first callback is called with the inner {@link Ok} value of this result,
-   * and each subsequent callback is called with the result of the previous callback.
-   *
-   * @param callback The list of transformer callbacks.
-   * @returns The new Result.
-   */
-  abstract pipe(...callback: ((val: A) => Result<A, B>)[]): Result<A, B>;
-  //abstract pipeAsync(...callback: ((val: Awaited<A>) => MaybePromise<A>)[]): AsyncResult<Awaited<A>, Awaited<B>>;
-
-  /**
    * Replaces the value held within the {@link Ok} of this result with the `val` argument.
    * If this is an {@link Err} rather than {@link Ok}, the value is not replaced and this `Result` stays the same.
    *
@@ -168,13 +147,138 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Ok" | "Err"> {
   abstract toPair(): Pair<A | null, B | null>;
 
   /**
+   * Adds tracing information to the result, if it is an {@link Err}.
+   *
+   * @param id the identifier to use for tracing, this can be a string or a symbol.
+   * @returns This result with the added tracing information.
+   */
+  abstract trace(id: Tag): Result<A, B>;
+
+  /**
+   * Updates this {@link Ok} result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the {@link Ok} with an {@link Err}.)
+   * If this is an {@link Err} rather than an {@link Ok}, the function is not called and the original {@link Err} is returned.
+   *
+   * @param callback The transformer function that is called with the {@link Ok} value.
+   * @returns The updated result.
+   */
+  try<C extends Tagged<"Result"> | Promise<Tagged<"Result">>>(
+    callback: (val: Awaited<A>) => C,
+  ): C extends Promise<infer P>
+    ? P extends AbstractResult<infer _Ok, infer _Err>
+      ? AsyncResult<InferOk<P>, InferErr<P> | B>
+      : never
+    : C extends AbstractResult<infer _Ok, infer _Err>
+      ? [A] extends [never]
+        ? Result<InferOk<C>, InferErr<C> | B>
+        : [A] extends [Promise<any>]
+          ? AsyncResult<InferOk<C>, InferErr<C> | B>
+          : Result<InferOk<C>, InferErr<C> | B>
+      : never {
+    return (() => {
+      if (this.err) {
+        if (isPromisefn(callback))
+          return AsyncResult.from(Promise.resolve(this as unknown as Err<B>));
+        else return this;
+      }
+
+      const validate = (res: any) => {
+        if (isResult(res)) return res;
+        throw new ExpectedResultError(res);
+      };
+
+      if (isPromise(this._val)) {
+        const val = this._promise as Promise<Awaited<A>>;
+        return AsyncResult.from(val.then(callback).then(validate));
+      }
+
+      const res = callback(this._val as Awaited<A>);
+      if (AsyncResult.is(res)) return res;
+      else if (isPromise(res)) return AsyncResult.from(res.then(validate));
+      else if (isResult(res)) return res;
+
+      throw new ExpectedResultError(res);
+    })() as C extends Promise<infer P>
+      ? P extends AbstractResult<infer _Ok, infer _Err>
+        ? AsyncResult<InferOk<P>, InferErr<P> | B>
+        : never
+      : C extends AbstractResult<infer _Ok, infer _Err>
+        ? [A] extends [never]
+          ? Result<InferOk<C>, InferErr<C> | B>
+          : [A] extends [Promise<any>]
+            ? AsyncResult<InferOk<C>, InferErr<C> | B>
+            : Result<InferOk<C>, InferErr<C> | B>
+        : never;
+  }
+
+  /**
+   * Updates this {@link Err} result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the {@link Err} with an {@link Ok}.)
+   * If this is an {@link Ok} rather than an {@link Err}, the function is not called and the original {@link Ok} is returned.
+   *
+   * @param callback The transformer function that is called with the {@link Err} value.
+   * @returns The updated result.
+   */
+  tryRecover<C extends Tagged<"Result"> | Promise<Tagged<"Result">>>(
+    callback: (val: Awaited<B>) => C,
+  ): C extends Promise<infer P>
+    ? P extends AbstractResult<infer _Ok, infer _Err>
+      ? AsyncResult<InferOk<P> | A, InferErr<P>>
+      : never
+    : C extends AbstractResult<infer _Ok, infer _Err>
+      ? [B] extends [never]
+        ? Result<InferOk<C> | A, InferErr<C>>
+        : [B] extends [Promise<any>]
+          ? AsyncResult<InferOk<C> | A, InferErr<C>>
+          : Result<InferOk<C> | A, InferErr<C>>
+      : never {
+    return (() => {
+      if (this.ok) {
+        if (isPromisefn(callback))
+          return AsyncResult.from(Promise.resolve(this as unknown as Ok<A>));
+        else return this;
+      }
+
+      const validate = (res: any) => {
+        if (isResult(res)) return res;
+        throw new ExpectedResultError(res);
+      };
+
+      if (isPromise(this._val)) {
+        const val = this._promise as Promise<Awaited<B>>;
+        return AsyncResult.from(val.then(callback).then(validate));
+      }
+
+      const res = callback(this._val as Awaited<B>);
+      if (AsyncResult.is(res)) return res;
+      else if (isPromise(res)) return AsyncResult.from(res.then(validate));
+      else if (isResult(res)) return res;
+
+      throw new ExpectedResultError(res);
+    })() as C extends Promise<infer P>
+      ? P extends AbstractResult<infer _Ok, infer _Err>
+        ? AsyncResult<InferOk<P> | A, InferErr<P>>
+        : never
+      : C extends AbstractResult<infer _Ok, infer _Err>
+        ? [B] extends [never]
+          ? Result<InferOk<C> | A, InferErr<C>>
+          : [B] extends [Promise<any>]
+            ? AsyncResult<InferOk<C> | A, InferErr<C>>
+            : Result<InferOk<C> | A, InferErr<C>>
+        : never;
+  }
+
+  /**
    * Extracts the {@link Ok} value, returning the `fallback` argument if the result is an {@link Err}.
    *
    * @param fallback the value to return if the result is an {@link Err}.
    * @returns The inner {@link Ok} value or the `fallback` argument.
    */
   abstract unwrap(fallback: A): A;
-
+  /**
+   * Extracts the inner value, regardless if it is an {@link Ok} or and {@link} Err.
+   *
+   * @returns The inner value
+   */
+  abstract unwrapBoth(): A | B;
   /**
    * Extracts the {@link Err} value, returning the `fallback` argument if the result is an {@link Ok}.
    *
@@ -187,33 +291,23 @@ abstract class Result_<A, B> implements Yields<A, B>, Tagged<"Ok" | "Err"> {
    * See documentation on the `use` method, for how to use this method.
    * @package
    */
-  *[Symbol.iterator](this: Result<A, B>): Generator<B, A, unknown> {
+  *[Symbol.iterator](this: Result<A, B>): Yields<A, B> {
     if (this.ok) return this.unwrap();
 
     yield this.unwrapErr();
-    throw new YieldError({ _tag: "Result" });
+    throw new YieldError(this);
   }
 
-  protected get promise(): Promise<Awaited<this["_val"]>> {
+  /** @private */
+  protected get _promise(): Promise<Awaited<A | B>> {
     return Promise.resolve(this._val);
   }
 
-  /**
-   * Adds tracing information to the result, if it is an {@link Err}.
-   *
-   * @param id the identifier to use for tracing, this can be a string or a symbol.
-   * @returns This result with the added tracing information.
-   */
-  abstract trace(id: Tag): this;
-
-  /**
-   * @package
-   */
+  /** @private */
   abstract _inheritStack(stack: Trace[]): this;
 }
 
-export class Ok<A> extends Result_<A, never> {
-  override readonly _tag = "Ok";
+export class Ok<A> extends AbstractResult<A, never> {
   override readonly ok = true;
   override readonly err = false;
 
@@ -221,16 +315,10 @@ export class Ok<A> extends Result_<A, never> {
     super();
   }
 
-  /**
-   * @inheritdoc
-   */
   assertOk(): A {
     return this._val;
   }
 
-  /**
-   * @inheritdoc
-   */
   assertErr(message?: string): never {
     throw new AssertError(
       message ?? "Expected Err, but received Ok instead.",
@@ -238,165 +326,81 @@ export class Ok<A> extends Result_<A, never> {
     );
   }
 
-  /**
-   * @inheritdoc
-   */
   lazyOr(): Ok<A> {
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
   lazyUnwrap(): A {
     return this._val;
   }
 
-  /**
-   * @inheritdoc
-   */
   map<C>(callback: (val: Awaited<A>) => C): Ok<PromiseIf<A, C>> {
     if (isPromise(this._val))
-      return new Ok(this.promise.then(callback) as PromiseIf<A, C>);
+      return new Ok(this._promise.then(callback) as PromiseIf<A, C>);
     else return new Ok(callback(this._val as Awaited<A>) as PromiseIf<A, C>);
   }
 
-  /**
-   * @inheritdoc
-   */
   mapErr(): Ok<A> {
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
   or(): Ok<A> {
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
-  pipe<C>(...callback: ((val: A) => Result<A, C>)[]): Result<A, C> {
-    if (callback.length === 0) return this;
+  // pipe<C>(...callback: ((val: A) => Result<A, C>)[]): Result<A, C> {
+  //   if (callback.length === 0) return this;
 
-    const fn = callback.shift()!;
-    const res = fn(this._val);
-    return res.pipe(...callback);
-  }
+  //   const fn = callback.shift()!;
+  //   const res = fn(this._val);
+  //   return res.pipe(...callback);
+  // }
 
-  /**
-   * @inheritdoc
-   */
   replace<C>(val: C): Ok<C> {
     return new Ok(val);
   }
 
-  /**
-   * @inheritdoc
-   */
   replaceErr(): Ok<A> {
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
   tap(callback: (val: Awaited<A>) => void): this {
-    if (isPromise(this._val)) this.promise.then(callback);
+    if (isPromise(this._val)) this._promise.then(callback);
     else callback(this._val as Awaited<A>);
 
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
   tapErr(): this {
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
   toPair(): Pair<A | null, null> {
     return [this._val, null];
   }
 
-  /**
-   * Updates this {@link Ok} result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the {@link Ok} with an {@link Err}.)
-   * If this is an {@link Err} rather than an {@link Ok}, the function is not called and the original {@link Err} is returned.
-   * Use `tryAsync` when dealing with async values.
-   */
-  try<R extends Result<any, any>>(callback: (val: A) => R): R {
-    return callback(this._val);
-  }
-
-  /**
-   * Async version of `try`.
-   */
-  tryAsync<R extends MaybePromise<Tagged<"Ok" | "Err">>>(
-    callback: (val: Awaited<A>) => R,
-  ): R extends MaybePromise<ResultLike<infer Ok, infer Err>>
-    ? AsyncResult<Ok, Err>
-    : never {
-    const res = AsyncResult.from(
-      this.promise.then(callback) as Promise<Result<any, any>>,
-    );
-
-    return res as R extends MaybePromise<ResultLike<infer Ok, infer Err>>
-      ? AsyncResult<Ok, Err>
-      : never;
-  }
-
-  /**
-   * Updates this {@link Err} result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the {@link Err} with an {@link Ok}.)
-   * If this is an {@link Ok} rather than an {@link Err}, the function is not called and the original {@link Ok} is returned.
-   * Use `TryRecoverAsync` when dealing with async values.
-   */
-  tryRecover(): Ok<A> {
-    return this;
-  }
-
-  /**
-   * Async version of `tryRecover`.
-   */
-  tryRecoverAsync(): AsyncResult<Awaited<A>, never> {
-    return AsyncResult.ok(this._val as Awaited<A>);
-  }
-
-  /**
-   * @inheritdoc
-   */
   unwrap(): A {
     return this._val;
   }
 
-  /**
-   * @inheritdoc
-   */
+  unwrapBoth(): A {
+    return this._val;
+  }
+
   unwrapErr<B>(fallback: B): B {
     return fallback;
   }
 
-  /**
-   * @inheritdoc
-   */
   trace(): this {
     return this;
   }
 
-  /**
-   * @package
-   */
   _inheritStack(): this {
     return this;
   }
 }
 
-export class Err<B> extends Result_<never, B> {
-  override readonly _tag = "Err";
+export class Err<B> extends AbstractResult<never, B> {
   override readonly ok = false;
   override readonly err = true;
 
@@ -407,9 +411,6 @@ export class Err<B> extends Result_<never, B> {
     super();
   }
 
-  /**
-   * @inheritdoc
-   */
   assertOk(message?: string): never {
     throw new AssertError(
       message ?? "Expected Ok, but received Err instead.",
@@ -417,41 +418,26 @@ export class Err<B> extends Result_<never, B> {
     );
   }
 
-  /**
-   * @inheritdoc
-   */
   assertErr(): B {
     return this._val;
   }
 
-  /**
-   * @inheritdoc
-   */
   lazyOr<A>(callback: () => Result<A, B>): Result<A, B> {
     return callback();
   }
 
-  /**
-   * @inheritdoc
-   */
   lazyUnwrap<A>(callback: () => A): A {
     return callback();
   }
 
-  /**
-   * @inheritdoc
-   */
   map(): Err<B> {
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
   mapErr<C>(callback: (val: Awaited<B>) => C): Err<PromiseIf<B, C>> {
     if (isPromise(this._val))
       return new Err(
-        this.promise.then(callback) as PromiseIf<B, C>,
+        this._promise.then(callback) as PromiseIf<B, C>,
         this._stack,
       );
     else
@@ -461,126 +447,54 @@ export class Err<B> extends Result_<never, B> {
       );
   }
 
-  /**
-   * @inheritdoc
-   */
   or<A>(fallback: Result<A, B>): Result<A, B> {
     return fallback;
   }
 
-  /**
-   * @inheritdoc
-   */
-  pipe(): Err<B> {
-    return this;
-  }
+  // pipe(): Err<B> {
+  //   return this;
+  // }
 
-  /**
-   * @inheritdoc
-   */
   replace(): Err<B> {
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
   replaceErr<C>(val: C): Err<C> {
     return new Err(val);
   }
 
-  /**
-   * @inheritdoc
-   */
   tap(): Err<B> {
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
   tapErr(callback: (val: Awaited<B>) => void): Err<B> {
-    if (isPromise(this._val)) this.promise.then(callback);
+    if (isPromise(this._val)) this._promise.then(callback);
     else callback(this._val as Awaited<B>);
 
     return this;
   }
 
-  /**
-   * @inheritdoc
-   */
   toPair(): Pair<null, B | null> {
     return [null, this._val];
   }
 
-  /**
-   * Updates this {@link Ok} result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the {@link Ok} with an {@link Err}.)
-   * If this is an {@link Err} rather than an {@link Ok}, the function is not called and the original {@link Err} is returned.
-   * Use `tryAsync` when dealing with async values.
-   */
-  try(): Err<B> {
-    return this;
+  trace(id: Tag): Err<B> {
+    const trace: Trace = { id };
+    return new Err(this._val, [...this._stack, trace]);
   }
 
-  /**
-   * Async version of `try`.
-   */
-  tryAsync(): AsyncResult<never, Awaited<B>> {
-    return AsyncResult.err(this._val as Awaited<B>);
-  }
-
-  /**
-   * Updates this {@link Err} result by passing its value to a function that returns a `Result`, and returning the updated result. (This may replace the {@link Err} with an {@link Ok}.)
-   * If this is an {@link Ok} rather than an {@link Err}, the function is not called and the original {@link Ok} is returned.
-   * Use `TryRecoverAsync` when dealing with async values.
-   */
-  tryRecover<R extends Result<any, any>>(callback: (val: B) => R): R {
-    return callback(this._val)._inheritStack(this._stack) as R;
-  }
-
-  /**
-   * Async version of `tryRecover`.
-   */
-  tryRecoverAsync<R extends MaybePromise<Tagged<"Ok" | "Err">>>(
-    callback: (val: Awaited<B>) => R,
-  ): R extends MaybePromise<ResultLike<infer Ok, infer Err>>
-    ? AsyncResult<Ok, Err>
-    : never {
-    const res = AsyncResult.from(
-      this.promise.then(callback) as Promise<Result<any, any>>,
-    );
-
-    return res as R extends MaybePromise<ResultLike<infer Ok, infer Err>>
-      ? AsyncResult<Ok, Err>
-      : never;
-  }
-
-  /**
-   * @inheritdoc
-   */
   unwrap<A>(fallback: A): A {
     return fallback;
   }
 
-  /**
-   * @inheritdoc
-   */
+  unwrapBoth(): B {
+    return this._val;
+  }
+
   unwrapErr(): B {
     return this._val;
   }
 
-  /**
-   * @inheritdoc
-   */
-  trace(id: Tag): this {
-    const trace: Trace = { id };
-    this._stack.push(trace);
-    return this;
-  }
-
-  /**
-   * @package
-   */
   _inheritStack(stack: Trace[]): this {
     this._stack.unshift(...stack);
     return this;

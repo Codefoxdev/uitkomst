@@ -21,16 +21,20 @@ import type { Err, Ok, Result } from "./result";
  * };
  * ```
  */
-export interface Yields<A, B> {
-  [Symbol.iterator](): Generator<B, A, unknown>;
+export interface Yieldable<A, B> {
+  [Symbol.iterator](): Yields<A, B>;
 }
 
+export type Yields<A, B> = Generator<B, A, unknown>;
+
 /**
- * An asynchronous version of {@link Yields}.
+ * An asynchronous version of {@link Yieldable}.
  */
-export interface AsyncYields<A, B> {
-  [Symbol.asyncIterator](): AsyncGenerator<B, A, unknown>;
+export interface AsyncYieldable<A, B> {
+  [Symbol.asyncIterator](): AsyncYields<A, B>;
 }
+
+export type AsyncYields<A, B> = AsyncGenerator<B, A, unknown>;
 
 export type Tag = string | symbol;
 
@@ -60,7 +64,7 @@ export type MaybeAsyncResult<A, B> =
  * // -> never
  * ```
  */
-export type ExtractOk<T> = T extends Ok<infer O> ? O : never;
+export type InferOk<T> = T extends Ok<infer O> ? O : never;
 /**
  * Extracts the {@link Err} value out of a result type.
  *
@@ -74,7 +78,7 @@ export type ExtractOk<T> = T extends Ok<infer O> ? O : never;
  * // -> Error
  * ```
  */
-export type ExtractErr<T> = T extends Err<infer E> ? E : never;
+export type InferErr<T> = T extends Err<infer E> ? E : never;
 /**
  * Extracts the value out of a result type, a.k.a. the type that the result.val property would have.
  * This type just use the {@link ExtractOk} and {@link ExtractErr} types under the hood.
@@ -89,7 +93,7 @@ export type ExtractErr<T> = T extends Err<infer E> ? E : never;
  * // -> Error
  * ```
  */
-export type ExtractValue<T> = ExtractOk<T> | ExtractErr<T>;
+export type InferValue<T> = InferOk<T> | InferErr<T>;
 
 export interface Trace {
   readonly id: Tag;

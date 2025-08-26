@@ -22,3 +22,17 @@ export class YieldError extends Error implements Tagged<"YieldError"> {
     );
   }
 }
+
+export class ExpectedResultError
+  extends Error
+  implements Tagged<"ExpectedResultError">
+{
+  override readonly name = "ExpectedResultError";
+  readonly _tag = "ExpectedResultError";
+
+  constructor(readonly val: any) {
+    super(
+      `Expected the received value to be a result${val?._tag ? ", but received an object tagged with " + val._tag.toString() : ""}`,
+    );
+  }
+}

@@ -1,5 +1,6 @@
 import type { Result } from "./result";
 import type {
+  AsyncYieldable,
   AsyncYields,
   MaybeAsyncResult,
   MaybePromise,
@@ -10,7 +11,7 @@ import { Err, Ok } from "./result";
 
 export class AsyncResult<A, B>
   extends Promise<Result<A, B>>
-  implements AsyncYields<A, B>, Tagged<"AsyncResult">
+  implements AsyncYieldable<A, B>, Tagged<"AsyncResult">
 {
   readonly _tag = "AsyncResult";
 
@@ -108,9 +109,7 @@ export class AsyncResult<A, B>
     return super.then((res) => (res.err ? res.unwrapErr() : fallback));
   }
 
-  async *[Symbol.asyncIterator](
-    this: AsyncResult<A, B>,
-  ): AsyncGenerator<B, A, never> {
+  async *[Symbol.asyncIterator](this: AsyncResult<A, B>): AsyncYields<A, B> {
     const res = await this;
     if (res.ok) return res.unwrap();
 

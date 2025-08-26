@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "rules": {
-    "require-yield": "allow"
+    "require-yield": "allow",
+    "no-unused-vars": "warn"
   }
 }
