@@ -1,4 +1,3 @@
-export type { Result } from "./result";
 export type {
   AsyncYields,
   InferErr,
@@ -12,14 +11,26 @@ export type {
 } from "./types";
 export { AsyncResult } from "./async";
 export { AssertError } from "./error";
-export { AbstractResult, Err, Ok } from "./result";
+export { Result } from "./namespace";
+export { AbstractResult } from "./result";
 export * from "./static";
 
-// Export static methods as a namespace for convenience
-import * as _result from "./static";
+import type { Err as _Err, Ok as _Ok } from "./result";
+import { Result } from "./namespace";
 
-/**
- * Namespace containing static utility methods for working with Result objects.
- * These methods are also exported seperately.
- */
-export const result = _result;
+export type Ok<A> = _Ok<A>;
+export type Err<E> = _Err<E>;
+
+export function Ok(): Ok<void>;
+export function Ok<A>(value: A): Ok<A>;
+export function Ok<A>(value?: A) {
+  if (value === undefined) return new Result.Ok<void>(undefined);
+  else return new Result.Ok<A>(value);
+}
+
+export function Err(): Err<void>;
+export function Err<E>(error: E): Err<E>;
+export function Err<E>(error?: E) {
+  if (error === undefined) return new Result.Err<void>(undefined);
+  else return new Result.Err<E>(error);
+}

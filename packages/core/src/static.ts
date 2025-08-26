@@ -1,4 +1,4 @@
-import type { Result } from "./index";
+import type { Result } from ".";
 import type { MaybeAsyncResult, MaybePromise, Pair, ResultLike } from "./types";
 import { AsyncResult, createAsyncResultFrom } from "./async";
 import { AssertError } from "./error";
@@ -122,7 +122,6 @@ export function flatten<A, B>(result: Result<Result<A, B>, B>): Result<A, B>;
 /**
  * @overload Asynchronous version of the {@link partition} method.
  */
-// biome-ignore format:
 export function flatten<A, B>(
   result: AsyncResult<MaybeAsyncResult<A, B>, B>,
 ): AsyncResult<A, B>;
@@ -183,7 +182,6 @@ export function partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]>;
 /**
  * @overload Asynchronous version of the {@link partition} method.
  */
-// biome-ignore format:
 export function partition<A, B>(
   results: AsyncResult<A, B>[],
 ): Promise<Pair<A[], B[]>>;
