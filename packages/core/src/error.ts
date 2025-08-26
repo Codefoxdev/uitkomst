@@ -32,7 +32,7 @@ export class ExpectedResultError
 
   constructor(readonly val: any) {
     super(
-      `Expected the received value to be a result${val._tag ? ", but received an object tagged with " + val._tag.toString() : ""}`,
+      `Expected the received value to be a result${val?._tag ? ", but received an object tagged with " + val._tag.toString() : ""}`,
     );
   }
 }

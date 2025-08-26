@@ -1,10 +1,8 @@
 import type {
   InferErr,
   InferOk,
-  MaybePromise,
   Pair,
   PromiseIf,
-  ResultLike,
   Tag,
   Tagged,
   Trace,
@@ -13,7 +11,7 @@ import type {
 } from "./types";
 import { AsyncResult } from "./async";
 import { AssertError, ExpectedResultError, YieldError } from "./error";
-import { isPromise } from "./helper";
+import { isPromise, isPromisefn } from "./helper";
 import { isResult } from "./static";
 
 /**
@@ -177,7 +175,11 @@ export abstract class AbstractResult<A, B>
           : Result<InferOk<C>, InferErr<C> | B>
       : never {
     return (() => {
-      if (this.err) return this;
+      if (this.err) {
+        if (isPromisefn(callback))
+          return AsyncResult.from(Promise.resolve(this as unknown as Err<B>));
+        else return this;
+      }
 
       const validate = (res: any) => {
         if (isResult(res)) return res;
@@ -229,7 +231,11 @@ export abstract class AbstractResult<A, B>
           : Result<InferOk<C> | A, InferErr<C>>
       : never {
     return (() => {
-      if (this.ok) return this;
+      if (this.ok) {
+        if (isPromisefn(callback))
+          return AsyncResult.from(Promise.resolve(this as unknown as Ok<A>));
+        else return this;
+      }
 
       const validate = (res: any) => {
         if (isResult(res)) return res;
