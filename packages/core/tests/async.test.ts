@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, expectTypeOf, test, vi } from "vitest";
 import { AsyncResult, Err, Ok, Result } from "../src/index";
 
 describe("AsyncResult constructors", () => {
@@ -8,6 +8,7 @@ describe("AsyncResult constructors", () => {
       expect(asyncOk).toBeInstanceOf(AsyncResult);
 
       const awaited = await asyncOk;
+      expectTypeOf(awaited).toEqualTypeOf<Ok<number>>();
       expect(awaited).toBeInstanceOf(Result.Ok);
       expect(awaited.ok).toBe(true);
       expect(awaited._val).toBe(42);
@@ -20,6 +21,7 @@ describe("AsyncResult constructors", () => {
       expect(asyncOk).toBeInstanceOf(AsyncResult);
 
       const awaited = await asyncOk;
+      expectTypeOf(awaited).toEqualTypeOf<Err<string>>();
       expect(awaited).toBeInstanceOf(Result.Err);
       expect(awaited.err).toBe(true);
       expect(awaited._val).toBe("Uh oh!");

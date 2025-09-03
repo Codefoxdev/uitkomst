@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, expectTypeOf, test, vi } from "vitest";
 import { AsyncResult, Err, Ok, Result } from "../src/index";
 
 describe("Result contructors", () => {
@@ -6,6 +6,7 @@ describe("Result contructors", () => {
     test("should create an Ok instance with the given value", () => {
       const res = Ok(42);
 
+      expectTypeOf(res).toEqualTypeOf<Ok<number>>();
       expect(res).toBeInstanceOf(Result.Ok);
       expect(res._val).toBe(42);
       expect(res.ok).toBe(true);
@@ -15,6 +16,7 @@ describe("Result contructors", () => {
     test("should create an empty Ok<void> without parameters", () => {
       const res = Ok();
 
+      expectTypeOf(res).toEqualTypeOf<Ok<void>>();
       expect(res).toBeInstanceOf(Result.Ok);
       expect(res._val).toBeUndefined();
     });
@@ -24,6 +26,7 @@ describe("Result contructors", () => {
     test("should create an Err instance with the given value", () => {
       const res = Err("error");
 
+      expectTypeOf(res).toEqualTypeOf<Err<string>>();
       expect(res).toBeInstanceOf(Result.Err);
       expect(res._val).toBe("error");
       expect(res.ok).toBe(false);
@@ -33,6 +36,7 @@ describe("Result contructors", () => {
     test("should create an empty Err<void> without parameters", () => {
       const res = Err();
 
+      expectTypeOf(res).toEqualTypeOf<Err<void>>();
       expect(res).toBeInstanceOf(Result.Err);
       expect(res._val).toBeUndefined();
     });

@@ -5,9 +5,9 @@
   "scripts": {
     "tsc": "tsc",
     "lint": "oxlint",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest --typecheck",
+    "test:run": "vitest run --typecheck",
+    "test:coverage": "vitest run --typecheck --coverage"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.3",
