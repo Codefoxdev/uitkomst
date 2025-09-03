@@ -1,3 +1,4 @@
+import type { Result } from "./namespace";
 import type {
   InferErr,
   InferOk,
@@ -13,13 +14,6 @@ import { AsyncResult } from "./async";
 import { AssertError, ExpectedResultError, YieldError } from "./error";
 import { isPromise, isPromisefn } from "./helper";
 import { isResult } from "./static";
-
-/**
- * The `Result` type represents a value that can be either a success (`Ok`) or a failure (`Err`).
- * This implementation is heavily inspired by Gleam's Result type, however it also contains some additional methods
- * and the properties are in camelCase instead of snake_case to follow JavaScript conventions.
- */
-export type Result<A, B> = Ok<A> | Err<B>;
 
 /**
  * The abstract result class on which the {@link Ok} and {@link Err} classes are based.

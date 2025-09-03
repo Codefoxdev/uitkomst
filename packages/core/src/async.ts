@@ -1,4 +1,5 @@
-import type { Result } from "./result";
+import type { Result } from ".";
+import type { ErrGuard, OkGuard, ResultGaurd } from "./namespace";
 import type {
   AsyncYieldable,
   AsyncYields,
@@ -10,7 +11,7 @@ import type {
 import { Err, Ok } from "./result";
 
 export class AsyncResult<A, B>
-  extends Promise<Result<A, B>>
+  extends Promise<ResultGaurd<A, B>>
   implements AsyncYieldable<A, B>, Tagged<"AsyncResult">
 {
   readonly _tag = "AsyncResult";
@@ -119,15 +120,15 @@ export class AsyncResult<A, B>
     );
   }
 
-  static ok<A>(val: A | Promise<A>): AsyncResult<A, never> {
+  static Ok<A>(val: A | Promise<A>): AsyncResult<A, never> {
     return new AsyncResult<A, never>((resolve) =>
-      Promise.resolve(val).then((v) => resolve(new Ok(v))),
+      Promise.resolve(val).then((v) => resolve(new Ok(v) as OkGuard<A>)),
     );
   }
 
-  static err<B>(val: B | Promise<B>): AsyncResult<never, B> {
+  static Err<B>(val: B | Promise<B>): AsyncResult<never, B> {
     return new AsyncResult<never, B>((resolve) =>
-      Promise.resolve(val).then((v) => resolve(new Err(v))),
+      Promise.resolve(val).then((v) => resolve(new Err(v) as ErrGuard<B>)),
     );
   }
 
@@ -139,7 +140,10 @@ export class AsyncResult<A, B>
    */
   static from<A, B>(res: MaybeAsyncResult<A, B>): AsyncResult<A, B> {
     if (AsyncResult.is(res)) return res;
-    else return new AsyncResult((resolve) => resolve(toPromiseResult(res)));
+    else
+      return new AsyncResult((resolve) =>
+        resolve(toPromiseResult(res) as Promise<ResultGaurd<A, B>>),
+      );
   }
 
   /**

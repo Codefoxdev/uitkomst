@@ -1,5 +1,5 @@
-import type { Result } from ".";
 import type { MaybeAsyncResult, MaybePromise, Pair, ResultLike } from "./types";
+import { Result } from ".";
 import { AsyncResult, createAsyncResultFrom } from "./async";
 import { AssertError } from "./error";
 import { Err, Ok } from "./result";
@@ -29,7 +29,7 @@ export function all<A, B>(
   results: Result<A, B>[] | AsyncResult<A, B>[],
 ): Result<A[], B> | AsyncResult<A[], B> {
   if (AsyncResult.is(results))
-    return AsyncResult.from(Promise.all(results).then((arr) => all(arr)));
+    return AsyncResult.from(awaitAsyncResults(results).then((arr) => all(arr)));
 
   const values: A[] = [];
 
@@ -189,7 +189,7 @@ export function partition<A, B>(
   results: Result<A, B>[] | AsyncResult<A, B>[],
 ): Pair<A[], B[]> | Promise<Pair<A[], B[]>> {
   if (AsyncResult.is(results))
-    return Promise.all(results).then((res) => partition(res));
+    return awaitAsyncResults(results).then((res) => partition(res));
 
   const ok = [];
   const err = [];
@@ -339,7 +339,7 @@ export function values<A, B>(
   results: Result<A, B>[] | AsyncResult<A, B>[],
 ): MaybePromise<A[]> {
   if (AsyncResult.is(results))
-    return Promise.all(results).then((arr) => values(arr));
+    return awaitAsyncResults(results).then((arr) => values(arr));
 
   const val: A[] = [];
   for (const result of results) if (result.ok) val.push(result.unwrap());
@@ -401,4 +401,12 @@ export async function wrapAsync<A, E = Error>(
   } catch (error) {
     return new Err(error as E);
   }
+}
+
+// This wrapper is needed to ensure proper types, as the result of Promise.all normally won't work,
+// but is somehow still compatible to the proper type?
+function awaitAsyncResults<A, B>(
+  res: AsyncResult<A, B>[],
+): Promise<Result<A, B>[]> {
+  return Promise.all(res);
 }
