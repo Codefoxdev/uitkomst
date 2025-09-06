@@ -1,7 +1,8 @@
 import type { MaybeAsyncResult, MaybePromise, Pair, ResultLike } from "./types";
 import { Result } from ".";
-import { AsyncResult, createAsyncResultFrom } from "./async";
+import { AsyncResult, mapAsyncResult } from "./async";
 import { AssertError } from "./error";
+import { block } from "./helper";
 import { Err, Ok } from "./result";
 
 /**
@@ -21,21 +22,22 @@ import { Err, Ok } from "./result";
  * ```
  */
 export function all<A, B>(results: Result<A, B>[]): Result<A[], B>;
-/**
- * @overload Asynchronous version of the {@link partition} method.
- */
-export function all<A, B>(results: AsyncResult<A, B>[]): AsyncResult<A[], B>;
-export function all<A, B>(
-  results: Result<A, B>[] | AsyncResult<A, B>[],
-): Result<A[], B> | AsyncResult<A[], B> {
-  if (AsyncResult.is(results))
-    return AsyncResult.from(awaitAsyncResults(results).then((arr) => all(arr)));
+export function all<A, B>(results: ResultLike<A, B>[]): AsyncResult<A[], B>;
+export function all<A, B>(results: ResultLike<A, B>[]) {
+  if (results.length === 0) return new Ok([]);
 
-  const values: A[] = [];
+  // Handle if any are async
+  if (arrayAnyAreAsync(results))
+    return new AsyncResult(async (resolve) => {
+      const arr = await Promise.all(results);
+      resolve(all(arr));
+    });
 
-  for (const result of results)
-    if (result.ok) values.push(result.unwrap());
-    else return result;
+  // All results are normal results
+  let values: A[] = [];
+  for (const res of results as Result<A, B>[])
+    if (res.ok) values.push(res._val);
+    else return res;
 
   return new Ok(values);
 }
@@ -58,17 +60,15 @@ export function assertOk<A, B>(result: Result<A, B>): A;
 export function assertOk<A, B>(result: AsyncResult<A, B>): Promise<A>;
 export function assertOk<A, B>(result: ResultLike<A, B>) {
   if (AsyncResult.is(result))
-    return result.then((res) => {
-      if (res.ok) return Promise.resolve(res.unwrap());
-
-      return Promise.reject(
-        new AssertError("Expected Ok, but received Err instead.", res),
+    return result
+      .unwrapPromise()
+      .catch(
+        (res: Err<B>) =>
+          new AssertError("Expected Ok, but received Err instead.", res),
       );
-    });
 
   if (result.ok) return result.unwrap();
-
-  throw new AssertError("Expected Ok, but received Err instead.", result);
+  else throw new AssertError("Expected Ok, but received Err instead.", result);
 }
 
 /**
@@ -89,13 +89,13 @@ export function assertErr<A, B>(result: Result<A, B>): B;
 export function assertErr<A, B>(result: AsyncResult<A, B>): Promise<B>;
 export function assertErr<A, B>(result: ResultLike<A, B>) {
   if (AsyncResult.is(result))
-    return result.then((res) => {
-      if (res.err) return Promise.resolve(res.unwrapErr());
-
-      return Promise.reject(
-        new AssertError("Expected Err, but received Ok instead.", res),
+    return result
+      .swap()
+      .unwrapPromise()
+      .catch(
+        (res: Err<A>) =>
+          new AssertError("Expected Err, but received Ok instead.", res),
       );
-    });
 
   if (result.err) return result.unwrapErr();
 
@@ -119,18 +119,14 @@ export function assertErr<A, B>(result: ResultLike<A, B>) {
  ```
  */
 export function flatten<A, B>(result: Result<Result<A, B>, B>): Result<A, B>;
-/**
- * @overload Asynchronous version of the {@link partition} method.
- */
 export function flatten<A, B>(
-  result: AsyncResult<MaybeAsyncResult<A, B>, B>,
+  result: AsyncResult<ResultLike<A, B>, B>,
 ): AsyncResult<A, B>;
-export function flatten<A, B>(
-  result: Result<Result<A, B>, B> | AsyncResult<MaybeAsyncResult<A, B>, B>,
-): Result<A, B> | AsyncResult<A, B> {
-  if (isResult(result)) return result.ok ? result.unwrap() : result;
+export function flatten<A, B>(result: ResultLike<ResultLike<A, B>, B>) {
+  if (AsyncResult.is(result))
+    return mapAsyncResult(result, (res) => (res.ok ? res.unwrap() : res));
 
-  return createAsyncResultFrom(result, (res) => (res.ok ? res.unwrap() : res));
+  return result.ok ? result.unwrap() : result;
 }
 
 /**
@@ -179,26 +175,24 @@ export function isErr(result: unknown): result is Err<unknown> {
  * ```
  */
 export function partition<A, B>(results: Result<A, B>[]): Pair<A[], B[]>;
-/**
- * @overload Asynchronous version of the {@link partition} method.
- */
 export function partition<A, B>(
-  results: AsyncResult<A, B>[],
+  results: ResultLike<A, B>[],
 ): Promise<Pair<A[], B[]>>;
-export function partition<A, B>(
-  results: Result<A, B>[] | AsyncResult<A, B>[],
-): Pair<A[], B[]> | Promise<Pair<A[], B[]>> {
-  if (AsyncResult.is(results))
-    return awaitAsyncResults(results).then((res) => partition(res));
+export function partition<A, B>(results: ResultLike<A, B>[]) {
+  // Handle if any are async
+  if (arrayAnyAreAsync(results))
+    return block(async () => {
+      const awaited = await Promise.all(results);
+      return partition(awaited);
+    });
 
-  const ok = [];
-  const err = [];
+  // All results are normal results
+  const pair: Pair<A[], B[]> = [[], []];
+  for (const res of results as Result<A, B>[])
+    if (res.ok) pair[0].push(res.unwrap());
+    else pair[1].push(res.unwrapErr());
 
-  for (const result of results)
-    if (result.ok) ok.push(result.unwrap());
-    else err.push(result.unwrapErr());
-
-  return [ok, err];
+  return pair;
 }
 
 type Callback<A extends Array<any> = any[], R = any> = (...args: A) => R;
@@ -250,11 +244,9 @@ export function proxy<B = Error, C extends Callback = Callback>(
  * // -> 2
  * ```
  */
-export function unwrapBoth<A>(result: Result<A, A>): A;
-export function unwrapBoth<A>(result: AsyncResult<A, A>): Promise<A>;
-export function unwrapBoth<A>(
-  result: Result<A, A> | AsyncResult<A, A>,
-): MaybePromise<A> {
+export function unwrapBoth<A, B>(result: Result<A, B>): A | B;
+export function unwrapBoth<A, B>(result: AsyncResult<A, B>): Promise<A | B>;
+export function unwrapBoth(result: ResultLike<any, any>): MaybePromise<any> {
   return result._val;
 }
 
@@ -263,6 +255,7 @@ export function unwrapBoth<A>(
  *
  * @param result The result to unwrap, also supports {@link AsyncResult}
  * @returns The inner value of the result
+ * @deprecated Use {@link unwrapBoth} instead.
  */
 export function unwrapBothUnsafe<A, B>(result: Result<A, B>): A | B;
 export function unwrapBothUnsafe<A, B>(
@@ -322,10 +315,11 @@ export function use<A, B>(
 
 /**
  * Given an array of results, returns an array containing all {@link Ok} values.
- * The length of the array is not necessarily equal to the length of the `results` array.
+ * The length of the array is not necessarily equal to the length of the `results` array,
+ * as all {@link Err} values are discarded, if you want to get all these values, use the {@link errValues} method instead.
  *
  * @param results The array of results, you want to get the values from.
- * @returns An array containing all {@link Ok} values from the results array, this array isn't guaranteed to be the same length as the results parameter. As it doesn't return {@link Err} values.
+ * @returns An array containing all {@link Ok} values from the results array.
  *
  * @example
  * ```ts
@@ -334,16 +328,53 @@ export function use<A, B>(
  * ```
  */
 export function values<A, B>(results: Result<A, B>[]): A[];
-export function values<A, B>(results: AsyncResult<A, B>[]): Promise<A[]>;
-export function values<A, B>(
-  results: Result<A, B>[] | AsyncResult<A, B>[],
-): MaybePromise<A[]> {
-  if (AsyncResult.is(results))
-    return awaitAsyncResults(results).then((arr) => values(arr));
+export function values<A, B>(results: ResultLike<A, B>[]): Promise<A[]>;
+export function values<A, B>(results: ResultLike<A, B>[]) {
+  // Handle if any are async
+  if (arrayAnyAreAsync(results))
+    return block(async () => {
+      const awaited = await Promise.all(results);
+      return values(awaited);
+    });
 
-  const val: A[] = [];
-  for (const result of results) if (result.ok) val.push(result.unwrap());
-  return val;
+  // All results are normal results
+  const arr: A[] = [];
+  for (const res of results as Result<A, B>[])
+    if (res.ok) arr.push(res.unwrap());
+
+  return arr;
+}
+
+/**
+ * Given an array of results, returns an array containing all {@link Err} values.
+ * The length of the array is not necessarily equal to the length of the `results` array,
+ * as all {@link Ok} values are discarded, if you want to get all these values, use the {@link values} method instead.
+ *
+ * @param results The array of results, you want to get the values from.
+ * @returns An array containing all {@link Err} values from the results array.
+ *
+ * @example
+ * ```ts
+ * errValues([Ok(1), Err("error"), Ok(3)])
+ * // -> ["error"]
+ * ```
+ */
+export function errValues<A, B>(results: Result<A, B>[]): B[];
+export function errValues<A, B>(results: ResultLike<A, B>[]): Promise<B[]>;
+export function errValues<A, B>(results: ResultLike<A, B>[]) {
+  // Handle if any are async
+  if (arrayAnyAreAsync(results))
+    return block(async () => {
+      const awaited = await Promise.all(results);
+      return errValues(awaited);
+    });
+
+  // All results are normal results
+  const arr: B[] = [];
+  for (const res of results as Result<A, B>[])
+    if (res.err) arr.push(res.unwrapErr());
+
+  return arr;
 }
 
 /**
@@ -403,10 +434,6 @@ export async function wrapAsync<A, E = Error>(
   }
 }
 
-// This wrapper is needed to ensure proper types, as the result of Promise.all normally won't work,
-// but is somehow still compatible to the proper type?
-function awaitAsyncResults<A, B>(
-  res: AsyncResult<A, B>[],
-): Promise<Result<A, B>[]> {
-  return Promise.all(res);
+function arrayAnyAreAsync(results: ResultLike<any, any>[]): boolean {
+  return results.reduce((is, res) => (!is ? AsyncResult.is(res) : true), false);
 }
