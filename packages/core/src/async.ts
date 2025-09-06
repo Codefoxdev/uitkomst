@@ -106,8 +106,22 @@ export class AsyncResult<A, B>
     return super.then((res) => (res.ok ? res.unwrap() : fallback));
   }
 
+  async unwrapBoth(): Promise<A | B> {
+    return super.then((res) => res.unwrapBoth());
+  }
+
   async unwrapErr(fallback: MaybePromise<B>): Promise<B> {
     return super.then((res) => (res.err ? res.unwrapErr() : fallback));
+  }
+
+  /**
+   * Unwraps this {@link AsyncResult} to a promise that resolves to the `Ok` value or rejects with the `Err` value.
+   */
+  async unwrapPromise(): Promise<A> {
+    return super.then((res) => {
+      if (res.ok) return Promise.resolve(res.unwrap());
+      else return Promise.reject(res.unwrapErr());
+    });
   }
 
   async *[Symbol.asyncIterator](this: AsyncResult<A, B>): AsyncYields<A, B> {
