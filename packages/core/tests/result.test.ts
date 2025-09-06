@@ -111,6 +111,13 @@ describe("Result methods", () => {
       expect(res._val).toBe(7);
     });
 
+    test("swap, should swap the Ok and Err values", () => {
+      const res = Ok(7).swap();
+
+      expect(res).toBeInstanceOf(Result.Err);
+      expect(res._val).toBe(7);
+    });
+
     test("tap, should call the given callback", () => {
       const callback = vi.fn();
       const res = Ok(7).tap(callback);
@@ -266,6 +273,13 @@ describe("Result methods", () => {
 
       expect(res).toBeInstanceOf(Result.Err);
       expect(res._val).toBe("new error");
+    });
+
+    test("swap, should swap the Ok and Err values", () => {
+      const res = Err(7).swap();
+
+      expect(res).toBeInstanceOf(Result.Ok);
+      expect(res._val).toBe(7);
     });
 
     test("tap, should not call the given callback", () => {

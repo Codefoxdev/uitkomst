@@ -68,6 +68,12 @@ export class AsyncResult<A, B>
     );
   }
 
+  swap(): AsyncResult<B, A> {
+    return createAsyncResultFrom(this, (res) =>
+      flattenResultPromise(res.swap()),
+    );
+  }
+
   tap(callback: (val: A) => MaybePromise<void>): this {
     super.then((res) => res.ok && callback(res._val));
     return this;
