@@ -65,7 +65,11 @@ export type MaybeAsyncResult<A, B> =
  * // -> never
  * ```
  */
-export type InferOk<T> = T extends Ok<infer O> ? O : never;
+export type InferOk<T> = T extends Ok<infer O>
+  ? O
+  : T extends AsyncResult<infer O, any>
+    ? O
+    : never;
 /**
  * Extracts the {@link Err} value out of a result type.
  *
@@ -79,7 +83,11 @@ export type InferOk<T> = T extends Ok<infer O> ? O : never;
  * // -> Error
  * ```
  */
-export type InferErr<T> = T extends Err<infer E> ? E : never;
+export type InferErr<T> = T extends Err<infer E>
+  ? E
+  : T extends AsyncResult<any, infer E>
+    ? E
+    : never;
 /**
  * Extracts the value out of a result type, a.k.a. the type that the result.val property would have.
  * This type just use the {@link ExtractOk} and {@link ExtractErr} types under the hood.

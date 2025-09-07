@@ -70,7 +70,7 @@ export type ErrGuard<B> = [B] extends [never] ? never : Err<B>;
  * ```
  * @package
  */
-export type ResultGaurd<A, B> = [A] extends [never]
+export type ResultGuard<A, B> = [A] extends [never]
   ? [B] extends [never]
     ? never
     : Err<B>

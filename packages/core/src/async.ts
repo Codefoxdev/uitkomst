@@ -1,5 +1,5 @@
 import type { Result } from ".";
-import type { ErrGuard, OkGuard, ResultGaurd } from "./namespace";
+import type { ErrGuard, OkGuard, ResultGuard } from "./namespace";
 import type {
   AsyncYieldable,
   AsyncYields,
@@ -11,7 +11,7 @@ import type {
 import { Err, Ok } from "./result";
 
 export class AsyncResult<A, B>
-  extends Promise<ResultGaurd<A, B>>
+  extends Promise<ResultGuard<A, B>>
   implements AsyncYieldable<A, B>, Tagged<"AsyncResult">
 {
   readonly _tag = "AsyncResult";
@@ -160,7 +160,7 @@ export class AsyncResult<A, B>
     if (AsyncResult.is(res)) return res;
     else
       return new AsyncResult((resolve) =>
-        resolve(toPromiseResult(res) as Promise<ResultGaurd<A, B>>),
+        resolve(toPromiseResult(res) as Promise<ResultGuard<A, B>>),
       );
   }
 
