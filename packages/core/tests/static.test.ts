@@ -1,5 +1,5 @@
-import { describe, expect, expectTypeOf, test, vi } from "vitest";
-import { AsyncResult, Err, Ok, Result, ResultLike } from "../src/index";
+import { describe, expect, expectTypeOf, test } from "vitest";
+import { AsyncResult, Err, Ok, Result } from "../src/index";
 // Seperate the static methods imports for clarity
 // This space is needed for biome formatter's import organization
 
@@ -182,7 +182,10 @@ describe("partition", () => {
     const res = partition([Ok(1), Err("error1"), Ok(2), Err("error2"), Ok(3)]);
 
     expectTypeOf(res).toEqualTypeOf<[number[], string[]]>();
-    expect(res).toEqual([[1, 2, 3], ["error1", "error2"]]);
+    expect(res).toEqual([
+      [1, 2, 3],
+      ["error1", "error2"],
+    ]);
   });
 
   test("(sync) should return empty Err array when all are Ok", () => {
@@ -200,16 +203,29 @@ describe("partition", () => {
   });
 
   test("(async) should separate Ok and Err values into two arrays", async () => {
-    const res = partition([AsyncResult.Ok(1), AsyncResult.Err("error1"), AsyncResult.Ok(2), AsyncResult.Err("error2"), AsyncResult.Ok(3)]);
+    const res = partition([
+      AsyncResult.Ok(1),
+      AsyncResult.Err("error1"),
+      AsyncResult.Ok(2),
+      AsyncResult.Err("error2"),
+      AsyncResult.Ok(3),
+    ]);
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
     expectTypeOf(awaited).toEqualTypeOf<[number[], string[]]>();
-    expect(awaited).toEqual([[1, 2, 3], ["error1", "error2"]]);
+    expect(awaited).toEqual([
+      [1, 2, 3],
+      ["error1", "error2"],
+    ]);
   });
 
   test("(async) should return empty Err array when all are Ok", async () => {
-    const res = partition([AsyncResult.Ok(1), AsyncResult.Ok(2), AsyncResult.Ok(3)]);
+    const res = partition([
+      AsyncResult.Ok(1),
+      AsyncResult.Ok(2),
+      AsyncResult.Ok(3),
+    ]);
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
@@ -218,7 +234,11 @@ describe("partition", () => {
   });
 
   test("(async) should return empty Ok array when all are Err", async () => {
-    const res = partition([AsyncResult.Err("error1"), AsyncResult.Err("error2"), AsyncResult.Err("error3")]);
+    const res = partition([
+      AsyncResult.Err("error1"),
+      AsyncResult.Err("error2"),
+      AsyncResult.Err("error3"),
+    ]);
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
@@ -227,13 +247,21 @@ describe("partition", () => {
   });
 
   test("(mixed) should handle mixed arrays", async () => {
-    const res = partition([Ok(1), AsyncResult.Err("error1"), AsyncResult.Ok(2), Err("error2")]);
+    const res = partition([
+      Ok(1),
+      AsyncResult.Err("error1"),
+      AsyncResult.Ok(2),
+      Err("error2"),
+    ]);
     expectTypeOf(res).toEqualTypeOf<Promise<[number[], string[]]>>();
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
     expectTypeOf(awaited).toEqualTypeOf<[number[], string[]]>();
-    expect(awaited).toEqual([[1, 2], ["error1", "error2"]]);
+    expect(awaited).toEqual([
+      [1, 2],
+      ["error1", "error2"],
+    ]);
   });
 });
 
@@ -246,14 +274,23 @@ describe("values", () => {
   });
 
   test("(sync) should return an empty array, if no Ok values present", () => {
-    const res = values([Err("Uh oh!"), Err("another Err"), Err("even more!??")]);
+    const res = values([
+      Err("Uh oh!"),
+      Err("another Err"),
+      Err("even more!??"),
+    ]);
 
     expectTypeOf(res).toEqualTypeOf<never[]>();
     expect(res).toEqual([]);
   });
 
   test("(async) should return an array of all Ok values", async () => {
-    const res = values([AsyncResult.Ok(1), AsyncResult.Err("Uh oh!"), AsyncResult.Ok(2), AsyncResult.Err("another Err")]);
+    const res = values([
+      AsyncResult.Ok(1),
+      AsyncResult.Err("Uh oh!"),
+      AsyncResult.Ok(2),
+      AsyncResult.Err("another Err"),
+    ]);
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
@@ -262,7 +299,11 @@ describe("values", () => {
   });
 
   test("(async) should return an empty array, if no Ok values present", async () => {
-    const res = values([AsyncResult.Err("Uh oh!"), AsyncResult.Err("another Err"), AsyncResult.Err("even more!??")]);
+    const res = values([
+      AsyncResult.Err("Uh oh!"),
+      AsyncResult.Err("another Err"),
+      AsyncResult.Err("even more!??"),
+    ]);
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
@@ -271,16 +312,20 @@ describe("values", () => {
   });
 
   test("(mixed) should handle mixed arrays", async () => {
-    const res = values([Ok(1), AsyncResult.Err("Uh oh!"), AsyncResult.Ok(2), Err("another Err")]);
+    const res = values([
+      Ok(1),
+      AsyncResult.Err("Uh oh!"),
+      AsyncResult.Ok(2),
+      Err("another Err"),
+    ]);
     expectTypeOf(res).toEqualTypeOf<Promise<number[]>>();
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
     expectTypeOf(awaited).toEqualTypeOf<number[]>();
     expect(awaited).toEqual([1, 2]);
-  })
+  });
 });
-
 
 describe("errValues", () => {
   test("(sync) should return an array of all Err values", () => {
@@ -298,7 +343,12 @@ describe("errValues", () => {
   });
 
   test("(async) should return an array of all Err values", async () => {
-    const res = errValues([AsyncResult.Ok(1), AsyncResult.Err("Uh oh!"), AsyncResult.Ok(2), AsyncResult.Err("another Err")]);
+    const res = errValues([
+      AsyncResult.Ok(1),
+      AsyncResult.Err("Uh oh!"),
+      AsyncResult.Ok(2),
+      AsyncResult.Err("another Err"),
+    ]);
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
@@ -307,7 +357,11 @@ describe("errValues", () => {
   });
 
   test("(async) should return an empty array, if no Err values present", async () => {
-    const res = errValues([AsyncResult.Ok(1), AsyncResult.Ok(2), AsyncResult.Ok(3)]);
+    const res = errValues([
+      AsyncResult.Ok(1),
+      AsyncResult.Ok(2),
+      AsyncResult.Ok(3),
+    ]);
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
@@ -316,12 +370,17 @@ describe("errValues", () => {
   });
 
   test("(mixed) should handle mixed arrays", async () => {
-    const res = errValues([Ok(1), AsyncResult.Err("Uh oh!"), AsyncResult.Ok(2), Err("another Err")]);
+    const res = errValues([
+      Ok(1),
+      AsyncResult.Err("Uh oh!"),
+      AsyncResult.Ok(2),
+      Err("another Err"),
+    ]);
     expectTypeOf(res).toEqualTypeOf<Promise<string[]>>();
     expect(res).toBeInstanceOf(Promise);
 
     const awaited = await res;
     expectTypeOf(awaited).toEqualTypeOf<string[]>();
     expect(awaited).toEqual(["Uh oh!", "another Err"]);
-  })
+  });
 });
