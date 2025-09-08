@@ -52,6 +52,8 @@ export type MaybeAsyncResult<A, B> =
   | AsyncResult<A, B>
   | MaybePromise<Result<A, B>>;
 
+export type Function<A extends Array<any> = any[], R = any> = (...args: A) => R;
+
 /**
  * Extracts the {@link Ok} value out of a result type.
  *

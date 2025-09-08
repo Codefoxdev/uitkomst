@@ -1,4 +1,5 @@
 import type {
+  Function,
   InferErr,
   InferOk,
   InferValue,
@@ -121,6 +122,8 @@ export function assertErr<A, B>(result: ResultLike<A, B>) {
 
 /**
  * Flattens a nested result into a single result.
+ *
+ * @see {@link flatten} the method that performs the flattening.
  *
  * @template C The nested result to flatten.
  * @returns The flattened result.
@@ -344,14 +347,42 @@ export function errValues<A, B>(results: ResultLike<A, B>[]) {
   return arr;
 }
 
-type Callback<A extends Array<any> = any[], R = any> = (...args: A) => R;
-type AutoDetermineResult<A, B> = A extends Promise<infer P>
-  ? AsyncResult<P, B>
-  : Result<A, B>;
+/**
+ * Determines the return type of a proxied function.
+ * If the return type is already a result, it will be left unchanged.
+ *
+ * @see {@link proxy} the method that creates a proxied function.
+ * @see {@link ProxyFunction} the type that creates the type signature of the proxied function.
+ *
+ * @template C The type of the function that should be proxied.
+ * @template E The error that the function may throw, defaults to `unknown`, but can be specified for better type safety.
+ */
+export type ProxyFunctionReturn<
+  C extends Function,
+  E = unknown,
+> = ReturnType<C> extends ResultLike<any, any>
+  ? C
+  : ReturnType<C> extends Promise<any>
+    ? AsyncResult<Awaited<ReturnType<C>>, E>
+    : Result<ReturnType<C>, E>;
 
 /**
  * Proxies a function to catch any thrown errors and return a result.
- * This method is similar to `result.wrap`, but is usefull if you need to call and wrap the same function multiple times.
+ *
+ * @see {@link proxy} the method that creates a proxied function.
+ *
+ * @template C The type of the function that should be proxied.
+ * @template E The error that the function may throw, defaults to `unknown`, but can be specified for better type safety.
+ * @returns A function that has the same parameters as `C`, but returns a result.
+ */
+export type ProxyFunction<C extends Function, E = unknown> = Function<
+  Parameters<C>,
+  ProxyFunctionReturn<C, E>
+>;
+
+/**
+ * Proxies a function to catch any thrown errors and return a result.
+ * This method is similar to {@link wrap}, but is usefull if you need to call and wrap the same function multiple times.
  *
  * @param callback The function that should be proxied.
  * @returns A result containing either the result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}. If the callback returns a promise, it will return an {@link AsyncResult} instead.
@@ -368,20 +399,14 @@ type AutoDetermineResult<A, B> = A extends Promise<infer P>
  * // -> Result<someReturnType, TypeError>
  * ```
  *
- * @template B The error that `callback` may throw, defaults to `unknown`.
+ * @template E The error that `callback` may throw, defaults to `unknown`, but can be specified for better type safety.
  * @template C The type of the callback function, should not have to be specified, as it should be inferred from the `callback` parameter.
  */
-export function proxy<B = unknown, C extends Callback = Callback>(
+export function proxy<E = unknown, C extends Function = Function>(
   callback: C,
-): (
-  ...args: Parameters<C>
-) => ReturnType<C> extends Promise<any>
-  ? AsyncResult<Awaited<ReturnType<C>>, B>
-  : Result<ReturnType<C>, B> {
+): ProxyFunction<C, E> {
   return (...args: Parameters<C>) =>
-    wrap(() => callback(...args)) as ReturnType<C> extends Promise<any>
-      ? AsyncResult<Awaited<ReturnType<C>>, B>
-      : Result<ReturnType<C>, B>;
+    wrap(() => callback(...args)) as ProxyFunctionReturn<C, E>;
 }
 
 /**
@@ -399,16 +424,16 @@ export function proxy<B = unknown, C extends Callback = Callback>(
  * // -> Err(Error('error'))
  * ```
  *
- * @template B The error that the callback may throw, defaults to the generic `Error` type.
- * @template A The return type of the callback, this should be inferred automatically.
+ * @template E The error that the callback may throw, defaults to the generic `Error` type.
+ * @template C The return type of the callback, this should be inferred automatically.
  */
-export function wrap<B = Error, A = any>(
-  callback: () => A,
-): A extends Promise<any> ? AsyncResult<Awaited<A>, B> : Result<A, B> {
+export function wrap<E = unknown, C extends Function = Function>(
+  callback: C,
+): ProxyFunctionReturn<C, E> {
   try {
     const returned = callback();
     if (!(returned instanceof Promise))
-      return new Ok(returned) as AutoDetermineResult<A, B>;
+      return new Ok(returned) as ProxyFunctionReturn<C, E>;
 
     return AsyncResult.from(
       new Promise((resolve) => {
@@ -416,9 +441,9 @@ export function wrap<B = Error, A = any>(
           .then((val) => resolve(new Ok(val)))
           .catch((err) => resolve(new Err(err)));
       }),
-    ) as AutoDetermineResult<A, B>;
+    ) as ProxyFunctionReturn<C, E>;
   } catch (error) {
-    return new Err(error) as AutoDetermineResult<A, B>;
+    return new Err(error) as ProxyFunctionReturn<C, E>;
   }
 }
 
@@ -466,9 +491,6 @@ export async function wrapAsync<A, E = Error>(
  * ```
  */
 export function use<A, B>(callback: () => Generator<B, A, never>): Result<A, B>;
-/**
- * @overload Use method with async support.
- */
 export function use<A, B>(
   callback: () => AsyncGenerator<B, A, never>,
 ): AsyncResult<A, B>;

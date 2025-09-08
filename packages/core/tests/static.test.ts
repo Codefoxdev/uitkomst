@@ -1,10 +1,9 @@
 import { describe, expect, expectTypeOf, test } from "vitest";
-import { AsyncResult, Err, Ok, Result } from "../src/index";
+import { AssertError, AsyncResult, Err, Ok, Result } from "../src/index";
 // Seperate the static methods imports for clarity
 // This space is needed for biome formatter's import organization
 
 import {
-  AssertError,
   all,
   assertErr,
   assertOk,
@@ -57,7 +56,7 @@ describe("all", () => {
   });
 
   test("(mixed) should handle mixed arrays", async () => {
-    const res = all([Ok(1), AsyncResult.Err("Uh oh!"), Ok(3)]);
+    const res = all([Ok(1), AsyncResult.Err("Uh oh!"), AsyncResult.Ok(3), Err("another error")]);
     expectTypeOf(res).toEqualTypeOf<AsyncResult<number[], string>>();
     expect(res).toBeInstanceOf(AsyncResult);
 

@@ -9,6 +9,11 @@ export type {
   Tagged,
   Yields,
 } from "./types";
+export type {
+  FlattenResult,
+  ProxyFunctionReturn,
+  ProxyFunction,
+} from "./static";
 export { AsyncResult } from "./async";
 export { AssertError } from "./error";
 export { Result } from "./namespace";
