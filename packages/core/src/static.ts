@@ -122,6 +122,21 @@ export function assertErr<A, B>(result: ResultLike<A, B>) {
 /**
  * Flattens a nested result into a single result.
  *
+ * @template C The nested result to flatten.
+ * @returns The flattened result.
+ */
+export type FlattenResult<C extends ResultLike<ResultLike<any, any>, any>> =
+  C extends Result<Result<any, any>, any>
+    ? Result<InferOk<InferOk<C>>, InferErr<InferOk<C>> | InferErr<C>>
+    : C extends Result<AsyncResult<any, any>, any>
+      ? AsyncResult<InferOk<InferOk<C>>, InferErr<InferOk<C>> | InferErr<C>>
+      : C extends AsyncResult<ResultLike<any, any>, any>
+        ? AsyncResult<InferOk<InferOk<C>>, InferErr<InferOk<C>> | InferErr<C>>
+        : never;
+
+/**
+ * Flattens a nested result into a single result.
+ *
  * @param result The nested result to flatten.
  * @returns The flattened result.
  *
@@ -135,12 +150,9 @@ export function assertErr<A, B>(result: ResultLike<A, B>) {
  * // -> Err("")
  *```
  */
-export function flatten<C extends Result<Result<any, any>, any>>(
+export function flatten<C extends ResultLike<ResultLike<any, any>, any>>(
   result: C,
-): Result<InferOk<InferOk<C>>, InferErr<InferOk<C>> | InferErr<C>>;
-export function flatten<C extends AsyncResult<ResultLike<any, any>, any>>(
-  result: C,
-): AsyncResult<InferOk<InferOk<C>>, InferErr<InferOk<C>> | InferErr<C>>;
+): FlattenResult<C>;
 export function flatten<A, B>(result: ResultLike<ResultLike<A, B>, B>) {
   if (AsyncResult.is(result))
     return mapAsyncResult(result, (res) => (res.ok ? res.unwrap() : res));
@@ -356,10 +368,10 @@ type AutoDetermineResult<A, B> = A extends Promise<infer P>
  * // -> Result<someReturnType, TypeError>
  * ```
  *
- * @template B The error that `callback` may throw, defaults to the generic `Error` type.
+ * @template B The error that `callback` may throw, defaults to `unknown`.
  * @template C The type of the callback function, should not have to be specified, as it should be inferred from the `callback` parameter.
  */
-export function proxy<B = Error, C extends Callback = Callback>(
+export function proxy<B = unknown, C extends Callback = Callback>(
   callback: C,
 ): (
   ...args: Parameters<C>
