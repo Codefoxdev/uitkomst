@@ -55,6 +55,17 @@ export function all<A, B>(results: ResultLike<A, B>[]) {
 }
 
 /**
+ * Asserts that a result is an {@link Ok}, and returns the unwrapped value,
+ * if the result is an {@link Err}, than it will return never.
+ *
+ * @see {@link assertOk}
+ *
+ * @template C The result type to assert.
+ * @returns The unwrapped {@link Ok} value, or never if the result is an {@link Err}.
+ */
+export type AssertOk<C extends ResultLike<any, any>> = Unwrap<C>;
+
+/**
  * Asserts that a result is an {@link Ok}, and returns the unwrapped value.
  *
  * @param result The result to assert.
@@ -68,10 +79,9 @@ export function all<A, B>(results: ResultLike<A, B>[]) {
  * // -> string
  * ```
  */
-export function assertOk<C extends Result<any, any>>(result: C): InferOk<C>;
-export function assertOk<C extends AsyncResult<any, any>>(
+export function assertOk<C extends ResultLike<any, any>>(
   result: C,
-): Promise<InferOk<C>>;
+): AssertOk<C>;
 export function assertOk<A, B>(result: ResultLike<A, B>) {
   if (AsyncResult.is(result))
     return result
@@ -87,6 +97,17 @@ export function assertOk<A, B>(result: ResultLike<A, B>) {
 }
 
 /**
+ * Asserts that a result is an {@link Err}, and returns the unwrapped value,
+ * if the result is an {@link Ok}, than it will return never.
+ *
+ * @see {@link assertErr}
+ *
+ * @template C The result type to assert.
+ * @returns The unwrapped {@link Err} value, or never if the result is an {@link Ok}.
+ */
+export type AssertErr<C extends ResultLike<any, any>> = UnwrapErr<C>;
+
+/**
  * Asserts that a result is an {@link Err}, and returns the unwrapped value.
  *
  * @param result The result to assert.
@@ -100,10 +121,9 @@ export function assertOk<A, B>(result: ResultLike<A, B>) {
  * // -> Error
  * ```
  */
-export function assertErr<C extends Result<any, any>>(result: C): InferErr<C>;
-export function assertErr<C extends AsyncResult<any, any>>(
+export function assertErr<C extends ResultLike<any, any>>(
   result: C,
-): Promise<InferErr<C>>;
+): AssertErr<C>;
 export function assertErr<A, B>(result: ResultLike<A, B>) {
   if (AsyncResult.is(result))
     return result
@@ -234,8 +254,57 @@ export function partition<A, B>(results: ResultLike<A, B>[]) {
 }
 
 /**
- * This method is the same as getting the value of a result, using the `Result.val` property,
- * however this ensures type safety by required the type of the {@link Ok} value to be the same as the type of the {@link Err} value.
+ * Unwraps the {@link Ok} value of the given result,
+ * if the result isn't an `Ok`, it will return the fallback type, which defaults to never.
+ *
+ * @see {@link UnwrapBoth}
+ *
+ * @template C The type of the result.
+ * @template A The type of the fallback value, defaults to `never`.
+ */
+export type Unwrap<
+  C extends ResultLike<any, any>,
+  A = never,
+> = C extends Result<any, any>
+  ? InferOk<C, A>
+  : C extends AsyncResult<any, any>
+    ? Promise<InferOk<C, A>>
+    : never;
+
+/**
+ * Unwraps the {@link Err} value of the given result,
+ * if the result isn't an `Err`, it will return the fallback type, which defaults to never.
+ *
+ * @see {@link UnwrapBoth}
+ *
+ * @template C The type of the result.
+ * @template A The type of the fallback value, defaults to `never`.
+ */
+export type UnwrapErr<
+  C extends ResultLike<any, any>,
+  A = never,
+> = C extends Result<any, any> //
+  ? InferErr<C, A>
+  : C extends AsyncResult<any, any>
+    ? Promise<InferErr<C, A>>
+    : never;
+
+/**
+ * Unwraps the inner value of the given result.
+ * This type mimics the behavior of the {@link unwrapBoth} method,
+ * so it wraps the value in a Promise, if it is an AsyncResult,
+ * if this is unwanted behavior, use {@link InferValue} instead.
+ *
+ * @see {@link unwrapBoth}, {@link InferValue}
+ *
+ * @template C The type of the result.
+ */
+export type UnwrapBoth<C extends ResultLike<any, any>> =
+  | Unwrap<C>
+  | UnwrapErr<C>;
+
+/**
+ * Unwraps the inner value of the given result.
  *
  * @param result The result to unwrap, also supports {@link AsyncResult}
  * @returns The inner value of the result
@@ -248,7 +317,7 @@ export function partition<A, B>(results: ResultLike<A, B>[]) {
  * // -> 2
  * ```
  */
-export function unwrapBoth<C extends Result<any, any>>(
+export function unwrapBoth<C extends ResultLike<any, any>>(
   result: C,
 ): InferValue<C>;
 export function unwrapBoth<C extends AsyncResult<any, any>>(

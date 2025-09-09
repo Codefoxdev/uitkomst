@@ -1,7 +1,12 @@
 export type {
+  AssertErr,
+  AssertOk,
   FlattenResult,
   ProxyFunction,
   ProxyFunctionReturn,
+  Unwrap,
+  UnwrapBoth,
+  UnwrapErr,
 } from "./static";
 export type {
   AsyncYields,

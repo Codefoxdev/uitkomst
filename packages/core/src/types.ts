@@ -59,48 +59,54 @@ export type Function<A extends Array<any> = any[], R = any> = (...args: A) => R;
  *
  * @example
  * ```ts
- * type OkType = ExtractOk<Result<string, Error>>
+ * type OkType = InferOk<Result<string, Error>>
  * // -> string
- * type OkType = ExtractOk<Ok<number>>
+ * type OkType = InferOk<Ok<number>>
  * // -> number
- * type OkType = ExtractOk<Err<Error>>
+ * type OkType = InferOk<Err<Error>>
  * // -> never
  * ```
+ *
+ * @template T The type of the result.
+ * @template A Optional fallback type, defaults to `never`.
  */
-export type InferOk<T> = T extends Ok<infer O>
+export type InferOk<T, A = never> = T extends Ok<infer O>
   ? O
   : T extends AsyncResult<infer O, any>
     ? O
-    : never;
+    : A;
 /**
  * Extracts the {@link Err} value out of a result type.
  *
  * @example
  * ```ts
- * type ErrType = ExtractErr<Result<string, Error>>
+ * type ErrType = InferErr<Result<string, Error>>
  * // -> Error
- * type ErrType = ExtractErr<Ok<number>>
+ * type ErrType = InferErr<Ok<number>>
  * // -> never
- * type ErrType = ExtractErr<Err<Error>>
+ * type ErrType = InferErr<Err<Error>>
  * // -> Error
  * ```
+ *
+ * @template T The type of the result.
+ * @template A Optional fallback type, defaults to `never`.
  */
-export type InferErr<T> = T extends Err<infer E>
+export type InferErr<T, A = never> = T extends Err<infer E>
   ? E
   : T extends AsyncResult<any, infer E>
     ? E
-    : never;
+    : A;
 /**
  * Extracts the value out of a result type, a.k.a. the type that the result.val property would have.
  * This type just use the {@link ExtractOk} and {@link ExtractErr} types under the hood.
  *
  * @example
  * ```ts
- * type ResultType = ExtractValue<Result<string, Error>>
+ * type ResultType = InferValue<Result<string, Error>>
  * // -> string | Error
- * type ResultType = ExtractValue<Ok<number>>
+ * type ResultType = InferValue<Ok<number>>
  * // -> number
- * type ResultType = ExtractValue<Err<Error>>
+ * type ResultType = InferValue<Err<Error>>
  * // -> Error
  * ```
  */
