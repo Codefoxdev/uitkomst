@@ -471,7 +471,7 @@ export type ProxyFunction<C extends Function, E = unknown> = Function<
  * @template E The error that `callback` may throw, defaults to `unknown`, but can be specified for better type safety.
  * @template C The type of the callback function, should not have to be specified, as it should be inferred from the `callback` parameter.
  */
-export function proxy<E = unknown, C extends Function = Function>(
+export function proxy<E, C extends Function>(
   callback: C,
 ): ProxyFunction<C, E> {
   return (...args: Parameters<C>) =>
@@ -501,16 +501,15 @@ export function wrap<E = unknown, C extends Function = Function>(
 ): ProxyFunctionReturn<C, E> {
   try {
     const returned = callback();
-    if (!(returned instanceof Promise))
-      return new Ok(returned) as ProxyFunctionReturn<C, E>;
+    if (returned instanceof Promise) {
+      const res = returned.then(
+        (val) => new Ok(val),
+        (err) => new Err(err),
+      );
+      return AsyncResult.from(res) as ProxyFunctionReturn<C, E>;
+    }
 
-    return AsyncResult.from(
-      new Promise((resolve) => {
-        returned
-          .then((val) => resolve(new Ok(val)))
-          .catch((err) => resolve(new Err(err)));
-      }),
-    ) as ProxyFunctionReturn<C, E>;
+    return new Ok(returned) as ProxyFunctionReturn<C, E>;
   } catch (error) {
     return new Err(error) as ProxyFunctionReturn<C, E>;
   }
