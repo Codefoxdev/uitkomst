@@ -320,7 +320,7 @@ describe("Result methods", () => {
 
       test("(async) should return itself as AsyncResult", async () => {
         const mock = vi.fn(async (x) => Ok(x + "!"));
-        const callback = async (x) => mock(x); // This is needed as vi.fn doesn't set constructor name as `AsyncFunction`, which is required for this method.
+        const callback = async (x: any) => mock(x); // This is needed as vi.fn doesn't set constructor name as `AsyncFunction`, which is required for this method.
         const res = Err("error").try(callback);
 
         expect(res).toBeInstanceOf(AsyncResult);

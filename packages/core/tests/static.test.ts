@@ -56,7 +56,12 @@ describe("all", () => {
   });
 
   test("(mixed) should handle mixed arrays", async () => {
-    const res = all([Ok(1), AsyncResult.Err("Uh oh!"), AsyncResult.Ok(3), Err("another error")]);
+    const res = all([
+      Ok(1),
+      AsyncResult.Err("Uh oh!"),
+      AsyncResult.Ok(3),
+      Err("another error"),
+    ]);
     expectTypeOf(res).toEqualTypeOf<AsyncResult<number[], string>>();
     expect(res).toBeInstanceOf(AsyncResult);
 
