@@ -10,6 +10,7 @@ import {
   errValues,
   flatten,
   partition,
+  proxy,
   values,
   wrap,
 } from "../src/index";
@@ -471,5 +472,122 @@ describe("wrap", () => {
     expect(res2).toBeInstanceOf(AsyncResult);
     expect(await res2).toBeInstanceOf(Result.Err);
     expect((await res2)._val).toBeInstanceOf(Error);
+  });
+});
+
+describe("proxy", () => {
+  const test1 = () => 42;
+  const test2 = (): string => {
+    throw new Error("This should be caugt");
+  };
+  const test3 = (x: number, y: string, z: boolean) =>
+    [x * 2, y + "!", !z] as [number, string, boolean];
+
+  test("(sync) should return an Ok when the function doesn't throw", () => {
+    // First overload
+    const fn1 = proxy<Error>()(test1);
+    const res1 = fn1();
+
+    expectTypeOf(res1).toEqualTypeOf<Result<number, Error>>();
+    expect(res1).toBeInstanceOf(Result.Ok);
+    expect(res1._val).toBe(42);
+
+    // Second overload
+    const fn2 = proxy<Error, typeof test1>(test1);
+    const res2 = fn2();
+
+    expectTypeOf(res2).toEqualTypeOf<Result<number, Error>>();
+    expect(res2).toBeInstanceOf(Result.Ok);
+    expect(res2._val).toBe(42);
+  });
+
+  test("(sync) should return an Err when the function throws", () => {
+    expect(test2).toThrow();
+
+    // First overload
+    const fn1 = proxy<Error>()(test2);
+    const res1 = fn1();
+
+    expectTypeOf(res1).toEqualTypeOf<Result<string, Error>>();
+    expect(res1).toBeInstanceOf(Result.Err);
+    expect(res1._val).toBeInstanceOf(Error);
+
+    // Second overload
+    const fn2 = proxy<Error, typeof test2>(test2);
+    const res2 = fn2();
+
+    expectTypeOf(res2).toEqualTypeOf<Result<string, Error>>();
+    expect(res2).toBeInstanceOf(Result.Err);
+    expect(res2._val).toBeInstanceOf(Error);
+  });
+
+  test("(sync) should correctly pass along the arguments", () => {
+    const fn1 = proxy<never>()(test3);
+    const res1 = fn1(21, "hello", false);
+
+    expectTypeOf(res1).toEqualTypeOf<Ok<[number, string, boolean]>>();
+    expect(res1).toBeInstanceOf(Result.Ok);
+    expect(res1._val).toEqual([42, "hello!", true]);
+  });
+
+  const testAsync1 = async () => 42;
+  const testAsync2 = async (): Promise<string> => {
+    return Promise.reject(new Error("This should be caugt"));
+  };
+  const testAsync3 = async (x: number, y: string, z: boolean) =>
+    Promise.resolve([x * 2, y + "!", !z] as [number, string, boolean]);
+
+  test("(async) should return an Ok when the function doesn't throw", async () => {
+    // First overload
+    const fn1 = proxy<Error>()(testAsync1);
+    const res1 = fn1();
+
+    expectTypeOf(res1).toEqualTypeOf<AsyncResult<number, Error>>();
+    expect(res1).toBeInstanceOf(AsyncResult);
+    expect(await res1).toBeInstanceOf(Result.Ok);
+    expect((await res1)._val).toBe(42);
+
+    // Second overload
+    const fn2 = proxy<Error, typeof testAsync1>(testAsync1);
+    const res2 = fn2();
+
+    expectTypeOf(res2).toEqualTypeOf<AsyncResult<number, Error>>();
+    expect(res2).toBeInstanceOf(AsyncResult);
+    expect(await res2).toBeInstanceOf(Result.Ok);
+    expect((await res2)._val).toBe(42);
+  });
+
+  test("(async) should return an Err when the function throws", async () => {
+    await expect(testAsync2).rejects.toThrow();
+
+    // First overload
+    const fn1 = proxy<Error>()(testAsync2);
+    const res1 = fn1();
+
+    expectTypeOf(res1).toEqualTypeOf<AsyncResult<string, Error>>();
+    expect(res1).toBeInstanceOf(AsyncResult);
+    expect(await res1).toBeInstanceOf(Result.Err);
+    expect((await res1)._val).toBeInstanceOf(Error);
+
+    // Second overload
+    const fn2 = proxy<Error, typeof testAsync2>(testAsync2);
+    const res2 = fn2();
+
+    expectTypeOf(res2).toEqualTypeOf<AsyncResult<string, Error>>();
+    expect(res2).toBeInstanceOf(AsyncResult);
+    expect(await res2).toBeInstanceOf(Result.Err);
+    expect((await res2)._val).toBeInstanceOf(Error);
+  });
+
+  test("(async) should correctly pass along the arguments", async () => {
+    const fn1 = proxy<never>()(testAsync3);
+    const res1 = fn1(21, "hello", false);
+
+    expectTypeOf(res1).toEqualTypeOf<
+      AsyncResult<[number, string, boolean], never>
+    >();
+    expect(res1).toBeInstanceOf(AsyncResult);
+    expect(await res1).toBeInstanceOf(Result.Ok);
+    expect((await res1)._val).toEqual([42, "hello!", true]);
   });
 });

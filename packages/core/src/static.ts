@@ -1,3 +1,4 @@
+import type { ResultGuard } from "./namespace";
 import type {
   Function,
   InferErr,
@@ -429,7 +430,7 @@ export type WrapFunction<
   ? C
   : ReturnType<C> extends Promise<any>
     ? AsyncResult<Awaited<ReturnType<C>>, E>
-    : Result<ReturnType<C>, E>;
+    : ResultGuard<ReturnType<C>, E>;
 
 /**
  * Proxies a function to catch any thrown errors and return a result.
@@ -448,26 +449,47 @@ export type ProxyFunction<C extends Function, E = unknown> = Function<
 /**
  * Proxies a function to catch any thrown errors and return a result.
  * This method is similar to {@link wrap}, but is usefull if you need to call and wrap the same function multiple times.
+ * This method has two overloads, one that takes zero arguments and returns a method that accepts the callback function,
+ * and one that accepts the callback function directly. The first overload allows for implicit type inference of the callback method,
+ * which needs to be specified when using the second overload. See the example for more information.
+ *
+ * Note: The return types of a function that makes use of generics may not be inferred correctly,
+ * try to avoid using generics in such cases, or typing the function explicitly.
  *
  * @param callback The function that should be proxied.
  * @returns A result containing either the result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}. If the callback returns a promise, it will return an {@link AsyncResult} instead.
  *
- * @example
+ * @example Usage with the first overload
  * ```ts
- * const fn = proxy(fs.writeFileSync)
- * fn("file.txt", "Data to write to file", "utf-8")
- * // -> Result<undefined, Error>
+ * const fn = proxy<Error | AggregateError>(fs.writeFileSync)
+ * fn("file.txt", "Data to write to file", "utf-8") // -> Result<undefined, Error | AggregateError>
  *
- * // Optionally: the error type can be specified as the first generic parameter.
- * const typedFn = proxy<TypeError>(someMethodThatThrows)
- * typedFn(someMethodArgs)
- * // -> Result<someReturnType, TypeError>
+ * const testFn = (x: string): string => { throw new TypeError("Test error") }
+ * const typedFn = proxy<TypeError>()(testFn)
+ * typedFn("test string") // -> Result<string, TypeError>
  * ```
  *
- * @template E The error that `callback` may throw, defaults to `unknown`, but can be specified for better type safety.
- * @template C The type of the callback function, should not have to be specified, as it should be inferred from the `callback` parameter.
+ * @example Usage with the second overload
+ * ```ts
+ * const fn = proxy(fs.writeFileSync)
+ * fn("file.txt", "Data to write to file", "utf-8") // -> Result<undefined, unknown>
+ *
+ * // Optionally: the error type can be specified as the first generic parameter.
+ * const testFn = (x: string): string => { throw new TypeError("Test error") }
+ * const typedFn = proxy<TypeError, typeof testFn>(testFn)
+ * typedFn("test string") // -> Result<string, TypeError>
+ * ```
+ *
+ * @template E The error that `callback` may throw, defaults to `unknown`, but should be specified for better type safety.
+ * @template C The type of the callback function.
  */
-export function proxy<E, C extends Function>(callback: C): ProxyFunction<C, E> {
+export function proxy<E>(): <C extends Function>(
+  callback: C,
+) => ProxyFunction<C, E>;
+export function proxy<E, C extends Function>(callback: C): ProxyFunction<C, E>;
+export function proxy<E, C extends Function>(callback?: C) {
+  if (callback === undefined) return (callback: C) => proxy(callback);
+
   return (...args: Parameters<C>) =>
     wrap(() => callback(...args)) as WrapFunction<C, E>;
 }
@@ -478,6 +500,9 @@ export function proxy<E, C extends Function>(callback: C): ProxyFunction<C, E> {
  * This method has two overloads, one that takes zero arguments and returns a method that accepts the callback function,
  * and one that accepts the callback function directly. The first overload allows for implicit type inference of the callback method,
  * which needs to be specified when using the second overload. See the example for more information.
+ *
+ * Note: The return types of a function that makes use of generics may not be inferred correctly,
+ * try to avoid using generics in such cases, or typing the function explicitly.
  *
  * @param callback The function that should be wrapped.
  * @returns A result containing either they result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}. If the callback returns a promise, it will return an {@link AsyncResult} instead.
@@ -504,8 +529,8 @@ export function proxy<E, C extends Function>(callback: C): ProxyFunction<C, E> {
  * wrap<Error, typeof cb2>(cb2) // -> Result<string, Error>
  * ```
  *
- * @template E The error that the callback may throw, defaults to the generic `Error` type.
- * @template C The type of the callback method, this should be inferred automatically.
+ * @template E The error that the callback may throw, defaults to `unknown`, but should be specified for better type safety.
+ * @template C The type of the callback method.
  */
 export function wrap<E>(): <C extends Function>(
   callback: C,
