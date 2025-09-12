@@ -111,6 +111,13 @@ describe("Result methods", () => {
       expect(res._val).toBe(7);
     });
 
+    test("swap, should swap the Ok and Err values", () => {
+      const res = Ok(7).swap();
+
+      expect(res).toBeInstanceOf(Result.Err);
+      expect(res._val).toBe(7);
+    });
+
     test("tap, should call the given callback", () => {
       const callback = vi.fn();
       const res = Ok(7).tap(callback);
@@ -268,6 +275,13 @@ describe("Result methods", () => {
       expect(res._val).toBe("new error");
     });
 
+    test("swap, should swap the Ok and Err values", () => {
+      const res = Err(7).swap();
+
+      expect(res).toBeInstanceOf(Result.Ok);
+      expect(res._val).toBe(7);
+    });
+
     test("tap, should not call the given callback", () => {
       const callback = vi.fn();
       // @ts-expect-error: should not be called
@@ -306,7 +320,7 @@ describe("Result methods", () => {
 
       test("(async) should return itself as AsyncResult", async () => {
         const mock = vi.fn(async (x) => Ok(x + "!"));
-        const callback = async (x) => mock(x); // This is needed as vi.fn doesn't set constructor name as `AsyncFunction`, which is required for this method.
+        const callback = async (x: any) => mock(x); // This is needed as vi.fn doesn't set constructor name as `AsyncFunction`, which is required for this method.
         const res = Err("error").try(callback);
 
         expect(res).toBeInstanceOf(AsyncResult);

@@ -116,6 +116,18 @@ export abstract class AbstractResult<A, B>
   abstract replaceErr<C>(val: C): Result<A, C>;
 
   /**
+   * Swaps the {@link Ok} and {@link Err} values of this result.
+   * Note that this does remove any tracing information that was attached to the {@link Err}.
+   *
+   * @returns The new Result, with the {@link Ok} and {@link Err} values swapped.
+   */
+  swap(): Result<B, A> {
+    const res = this as unknown as Result<A, B>;
+    if (res.ok) return new Err(res.unwrap());
+    else return new Ok(res.unwrapErr());
+  }
+
+  /**
    * 'Taps' into the result, calling `callback` with the value if this is an {@link Ok}.
    * This doesn't modify the result, if you want to modify the {@link Ok} value, use `map` instead.
    *
