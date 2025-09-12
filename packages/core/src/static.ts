@@ -328,10 +328,6 @@ export function unwrapBoth(result: ResultLike<any, any>): MaybePromise<any> {
 }
 
 /**
- * The same as {@link unwrapBoth}, but this one doesn't require the {@link Ok} and {@link Err} values to be of the same type.
- *
- * @param result The result to unwrap, also supports {@link AsyncResult}
- * @returns The inner value of the result
  * @deprecated Use {@link unwrapBoth} instead.
  */
 export function unwrapBothUnsafe<C extends Result<any, any>>(
@@ -426,7 +422,7 @@ export function errValues<A, B>(results: ResultLike<A, B>[]) {
  * @template C The type of the function that should be proxied.
  * @template E The error that the function may throw, defaults to `unknown`, but can be specified for better type safety.
  */
-export type ProxyFunctionReturn<
+export type WrapFunction<
   C extends Function,
   E = unknown,
 > = ReturnType<C> extends ResultLike<any, any>
@@ -446,7 +442,7 @@ export type ProxyFunctionReturn<
  */
 export type ProxyFunction<C extends Function, E = unknown> = Function<
   Parameters<C>,
-  ProxyFunctionReturn<C, E>
+  WrapFunction<C, E>
 >;
 
 /**
@@ -471,34 +467,53 @@ export type ProxyFunction<C extends Function, E = unknown> = Function<
  * @template E The error that `callback` may throw, defaults to `unknown`, but can be specified for better type safety.
  * @template C The type of the callback function, should not have to be specified, as it should be inferred from the `callback` parameter.
  */
-export function proxy<E, C extends Function>(
-  callback: C,
-): ProxyFunction<C, E> {
+export function proxy<E, C extends Function>(callback: C): ProxyFunction<C, E> {
   return (...args: Parameters<C>) =>
-    wrap(() => callback(...args)) as ProxyFunctionReturn<C, E>;
+    wrap(() => callback(...args)) as WrapFunction<C, E>;
 }
 
 /**
  * Wraps a function that may throw an error, into a result.
  * If you know what the error type is, you can specify it as the first generic parameter, by default it is the default `Error` type.
+ * This method has two overloads, one that takes zero arguments and returns a method that accepts the callback function,
+ * and one that accepts the callback function directly. The first overload allows for implicit type inference of the callback method,
+ * which needs to be specified when using the second overload. See the example for more information.
  *
  * @param callback The function that should be wrapped.
  * @returns A result containing either they result of the callback function as an {@link Ok}, or the thrown error as an {@link Err}. If the callback returns a promise, it will return an {@link AsyncResult} instead.
  *
- * @example
+ * @example Usage with the first overload
  * ```ts
- * wrap(() => 1)
- * // -> Ok(1)
- * wrap(() => { throw new Error('error') })
- * // -> Err(Error('error'))
+ * const cb1: () => number = () => 1;
+ * wrap<Error>()(cb1) // -> Result<number, Error>
+ *
+ * const cb2: () => string = () => { throw new Error('error') };
+ * wrap<Error>()(cb2) // -> Result<string, Error>
+ * ```
+ *
+ * @example Usage with the second overload
+ * ```ts
+ * const cb1: () => number = () => 1;
+ * wrap(cb1) // -> Result<number, unknown>
+ * // When specifying the error type, the type of the callback also needs to be specified, due to typescript limitations.
+ * wrap<Error, typeof cb1>(cb1) // -> Result<number, Error>
+ *
+ * const cb2: () => string = () => { throw new Error('error') };
+ * wrap(cb2) // -> Result<string, unknown>
+ * // When specifying the error type.
+ * wrap<Error, typeof cb2>(cb2) // -> Result<string, Error>
  * ```
  *
  * @template E The error that the callback may throw, defaults to the generic `Error` type.
- * @template C The return type of the callback, this should be inferred automatically.
+ * @template C The type of the callback method, this should be inferred automatically.
  */
-export function wrap<E = unknown, C extends Function = Function>(
+export function wrap<E>(): <C extends Function>(
   callback: C,
-): ProxyFunctionReturn<C, E> {
+) => WrapFunction<C, E>;
+export function wrap<E, C extends Function>(callback: C): WrapFunction<C, E>;
+export function wrap<E, C extends Function>(callback?: C) {
+  if (callback === undefined) return (callback: C) => wrap(callback);
+
   try {
     const returned = callback();
     if (returned instanceof Promise) {
@@ -506,12 +521,12 @@ export function wrap<E = unknown, C extends Function = Function>(
         (val) => new Ok(val),
         (err) => new Err(err),
       );
-      return AsyncResult.from(res) as ProxyFunctionReturn<C, E>;
+      return AsyncResult.from(res) as WrapFunction<C, E>;
     }
 
-    return new Ok(returned) as ProxyFunctionReturn<C, E>;
+    return new Ok(returned) as WrapFunction<C, E>;
   } catch (error) {
-    return new Err(error) as ProxyFunctionReturn<C, E>;
+    return new Err(error) as WrapFunction<C, E>;
   }
 }
 

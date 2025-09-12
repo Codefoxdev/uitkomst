@@ -3,7 +3,7 @@ export type {
   AssertOk,
   FlattenResult,
   ProxyFunction,
-  ProxyFunctionReturn,
+  WrapFunction,
   Unwrap,
   UnwrapBoth,
   UnwrapErr,
