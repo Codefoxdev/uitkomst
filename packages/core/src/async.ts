@@ -1,4 +1,4 @@
-import type { Result } from ".";
+import type { Result } from "./index";
 import type { ErrGuard, OkGuard, ResultGuard } from "./namespace";
 import type {
   AsyncYieldable,

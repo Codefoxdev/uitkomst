@@ -3,10 +3,10 @@ export type {
   AssertOk,
   FlattenResult,
   ProxyFunction,
-  WrapFunction,
   Unwrap,
   UnwrapBoth,
   UnwrapErr,
+  WrapFunction,
 } from "./static";
 export type {
   AsyncYields,

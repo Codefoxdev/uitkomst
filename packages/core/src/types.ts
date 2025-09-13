@@ -1,5 +1,5 @@
-import type { Result } from ".";
 import type { AsyncResult } from "./async";
+import type { Result } from "./index";
 import type { Err, Ok } from "./result";
 
 /**

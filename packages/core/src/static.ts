@@ -8,10 +8,10 @@ import type {
   Pair,
   ResultLike,
 } from "./types";
-import { Result } from ".";
 import { AsyncResult, mapAsyncResult } from "./async";
 import { AssertError } from "./error";
 import { arrayAnyAreAsync, block } from "./helper";
+import { Result } from "./index";
 import { Err, Ok } from "./result";
 
 /**
