@@ -7,13 +7,15 @@
     "lint": "oxlint",
     "test": "vitest --typecheck",
     "test:run": "vitest run --typecheck",
-    "test:coverage": "vitest run --typecheck --coverage"
+    "test:coverage": "vitest run --typecheck --coverage",
+    "build": "tsdown"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.3",
+    "@biomejs/biome": "^2.2.4",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "3.2.4",
-    "oxlint": "^1.14.0",
+    "oxlint": "^1.16.0",
+    "tsdown": "^0.15.4",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
