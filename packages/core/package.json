@@ -1,11 +1,16 @@
 {
-  "name": "@uitkomst/core",
-  "version": "0.3.1",
+  "name": "uitkomst",
+  "version": "0.4.0",
   "type": "module",
   "license": "MIT",
   "author": "Codefoxdev",
-  "description": "",
-  "keywords": [],
+  "description": "Simplies error handling and type-safety, while providing improved dx.",
+  "keywords": [
+    "result",
+    "error-handling",
+    "type-safety",
+    "dx"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/types.d.ts",
   "exports": {
