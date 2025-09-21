@@ -5,6 +5,11 @@
   "license": "MIT",
   "author": "Codefoxdev",
   "description": "Simplies error handling and type-safety, while providing improved dx.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Codefoxdev/uitkomst.git",
+    "directory": "packages/core"
+  },
   "keywords": [
     "result",
     "error-handling",
