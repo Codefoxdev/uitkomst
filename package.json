@@ -7,7 +7,8 @@
     "lint": "oxlint",
     "test": "vitest --typecheck",
     "test:run": "vitest run --typecheck",
-    "test:coverage": "vitest run --typecheck --coverage"
+    "test:coverage": "vitest run --typecheck --coverage",
+    "build": "tsdown"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
