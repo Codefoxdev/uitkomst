@@ -3,8 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "tsc": "tsc",
     "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "biome check",
+    "check": "corepack pnpm format && corepack pnpm lint",
+
     "test": "vitest --typecheck",
     "test:run": "vitest run --typecheck",
     "test:coverage": "vitest run --typecheck --coverage",
