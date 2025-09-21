@@ -1,0 +1,32 @@
+{
+  "name": "@uitkomst/option",
+  "version": "0.4.0",
+  "type": "module",
+  "license": "MIT",
+  "author": "Codefoxdev",
+  "description": "An implementation of the Option type, inspired by Gleam's Option type.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Codefoxdev/uitkomst.git",
+    "directory": "packages/option"
+  },
+  "keywords": [
+    "option",
+    "error-handling",
+    "type-safety",
+    "dx"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/types.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "uitkomst": "workspace:*"
+  }
+}
