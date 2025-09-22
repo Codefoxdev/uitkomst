@@ -33,13 +33,15 @@ export abstract class AbstractOption<A>
    */
   abstract assertNone(message?: string): void;
 
-  //abstract lazyOr(callback: () => Option<A>): Option<A>;
-  //abstract lazyUnwrap(callback: () => A): A;
-  //abstract map<B>(callback: (val: A) => B): Option<B>;
-  //abstract or(other: Option<A>): Option<A>;
-  //abstract tap(callback: (val: Awaited<A>) => void): Option<A>;
+  abstract lazyOr(callback: () => Option<A>): Option<A>;
+  abstract lazyUnwrap(callback: () => A): A;
+  // TODO: Add async support
+  abstract map<B>(callback: (val: A) => B): Option<B>;
+  abstract or(other: Option<A>): Option<A>;
+  abstract tap(callback: (val: Awaited<A>) => void): Option<A>;
   abstract toResult(): Result<A, MissingNoneError>;
-  //abstract try<B>(callback: (val: A) => Option<B>): Option<B>;
+  // TODO: Add async support
+  abstract try<B>(callback: (val: A) => Option<B>): Option<B>;
 
   abstract unwrap(fallback: A): A;
 
@@ -70,8 +72,36 @@ export class Some<A> extends AbstractOption<A> {
     );
   }
 
+  override lazyOr(): Some<A> {
+    return this;
+  }
+
+  override lazyUnwrap(): A {
+    return this.unwrap();
+  }
+
+  override map<B>(callback: (val: A) => B): Option<B> {
+    const val = callback(this._val);
+    return new Some(val);
+  }
+
+  override or(): Some<A> {
+    return this;
+  }
+
+  override tap(callback: (val: Awaited<A>) => void): Some<A> {
+    if (this._val instanceof Promise) this._val.then(callback);
+    else callback(this._val as Awaited<A>);
+
+    return this;
+  }
+
   override toResult(): Ok<A> {
     return Ok(this._val);
+  }
+
+  override try<B>(callback: (val: A) => Option<B>): Option<B> {
+    return callback(this._val);
   }
 
   override unwrap(): A {
@@ -95,8 +125,32 @@ export class None extends AbstractOption<never> {
     return undefined;
   }
 
+  override lazyOr<A>(callback: () => Option<A>): Option<A> {
+    return callback();
+  }
+
+  override lazyUnwrap<A>(callback: () => A): A {
+    return callback();
+  }
+
+  override map(): None {
+    return this;
+  }
+
+  override or<A>(other: Option<A>): Option<A> {
+    return other;
+  }
+
+  override tap(): None {
+    return this;
+  }
+
   override toResult(): Err<MissingNoneError> {
     return Err(new MissingNoneError());
+  }
+
+  override try(): None {
+    return this;
   }
 
   override unwrap<A>(fallback: A): A {
