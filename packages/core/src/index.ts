@@ -17,6 +17,7 @@ export type {
   MaybePromise,
   Pair,
   ResultLike,
+  ResultType,
   Tag,
   Tagged,
   Trace,

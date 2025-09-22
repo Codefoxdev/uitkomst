@@ -1,10 +1,14 @@
-import type { Tagged, Yieldable, Yields } from "uitkomst";
-import { AssertError, YieldError } from "uitkomst";
+import type { Result, ResultLike, Tagged, Yieldable, Yields } from "uitkomst";
+import { AssertError, Err, Ok, YieldError } from "uitkomst";
+import { MissingNoneError } from "./error";
 
 export type Option<A> = Some<A> | None;
 
 export abstract class AbstractOption<A>
-  implements Yieldable<A, void>, Tagged<"Option">
+  implements
+    Yieldable<A, void>,
+    Tagged<"Option">,
+    ResultLike<A, MissingNoneError>
 {
   declare readonly _val: A;
   readonly _tag = "Option";
@@ -34,6 +38,7 @@ export abstract class AbstractOption<A>
   //abstract map<B>(callback: (val: A) => B): Option<B>;
   //abstract or(other: Option<A>): Option<A>;
   //abstract tap(callback: (val: Awaited<A>) => void): Option<A>;
+  abstract toResult(): Result<A, MissingNoneError>;
   //abstract try<B>(callback: (val: A) => Option<B>): Option<B>;
 
   abstract unwrap(fallback: A): A;
@@ -65,6 +70,10 @@ export class Some<A> extends AbstractOption<A> {
     );
   }
 
+  override toResult(): Ok<A> {
+    return Ok(this._val);
+  }
+
   override unwrap(): A {
     return this._val;
   }
@@ -84,6 +93,10 @@ export class None extends AbstractOption<never> {
 
   override assertNone(): void {
     return undefined;
+  }
+
+  override toResult(): Err<MissingNoneError> {
+    return Err(new MissingNoneError());
   }
 
   override unwrap<A>(fallback: A): A {

@@ -37,6 +37,11 @@ export interface AsyncYieldable<A, B> {
 
 export type AsyncYields<A, B> = AsyncGenerator<B, A, unknown>;
 
+export interface ResultLike<A, B> {
+  // Replace method name with a Symbol?
+  toResult(): Result<A, B>;
+}
+
 export type Tag = string | symbol;
 
 export interface Tagged<T extends Tag> {
@@ -44,7 +49,7 @@ export interface Tagged<T extends Tag> {
 }
 
 export type PromiseIf<A, B> = A extends Promise<any> ? Promise<Awaited<B>> : B;
-export type ResultLike<A, B> = Result<A, B> | AsyncResult<A, B>;
+export type ResultType<A, B> = Result<A, B> | AsyncResult<A, B>;
 
 export type Pair<A, B> = [A, B];
 export type MaybePromise<T> = Promise<T> | T;

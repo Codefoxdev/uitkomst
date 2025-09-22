@@ -1,4 +1,4 @@
-import type { ResultLike } from "./types";
+import type { ResultType } from "./types";
 import { AsyncResult } from "./async";
 
 export function isPromise(value: unknown): value is Promise<any> {
@@ -13,6 +13,6 @@ export function block<C>(cb: () => Promise<C>): Promise<C> {
   return cb();
 }
 
-export function arrayAnyAreAsync(results: ResultLike<any, any>[]): boolean {
+export function arrayAnyAreAsync(results: ResultType<any, any>[]): boolean {
   return results.reduce((is, res) => (!is ? AsyncResult.is(res) : true), false);
 }
