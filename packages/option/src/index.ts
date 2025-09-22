@@ -1,3 +1,4 @@
+export type { InferSome, InferValue } from "./types";
 export { MissingNoneError } from "./error";
 export { AbstractOption } from "./option";
 
@@ -5,6 +6,9 @@ import { None as _None, Some as _Some } from "./option";
 
 export type Some<A> = _Some<A>;
 export type None = _None;
+
+export type SomeGuard<A> = [A] extends [never] ? never : Some<A>;
+export type OptionGuard<A> = SomeGuard<A> | None;
 
 export function Some(): Some<void>;
 export function Some<A>(value: A): Some<A>;

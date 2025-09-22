@@ -42,6 +42,10 @@ export interface ResultLike<A, B> {
   toResult(): Result<A, B>;
 }
 
+export interface AsyncResultLike<A, B> {
+  toResult(): AsyncResult<A, B>;
+}
+
 export type Tag = string | symbol;
 
 export interface Tagged<T extends Tag> {

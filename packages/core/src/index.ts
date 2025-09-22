@@ -9,6 +9,7 @@ export type {
   WrapFunction,
 } from "./static";
 export type {
+  AsyncResultLike,
   AsyncYieldable,
   AsyncYields,
   InferErr,
