@@ -1,6 +1,7 @@
 import type { AsyncResult } from "./async";
 import type { Result } from "./index";
 import type { Err, Ok } from "./result";
+import { Uitkomst } from "./namespace";
 
 /**
  * Represents a value that can be deferred with a yield* statement, to be turned into a result.
@@ -38,12 +39,11 @@ export interface AsyncYieldable<A, B> {
 export type AsyncYields<A, B> = AsyncGenerator<B, A, unknown>;
 
 export interface ResultLike<A, B> {
-  // Replace method name with a Symbol?
-  toResult(): Result<A, B>;
+  [Uitkomst.toResultSymbol](): Result<A, B>;
 }
 
 export interface AsyncResultLike<A, B> {
-  toResult(): AsyncResult<A, B>;
+  [Uitkomst.toResultSymbol](): AsyncResult<A, B>;
 }
 
 export type Tag = string | symbol;

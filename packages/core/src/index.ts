@@ -27,7 +27,7 @@ export type {
 } from "./types";
 export { AsyncResult } from "./async";
 export { AssertError, ExpectedResultError, YieldError } from "./error";
-export { Result } from "./namespace";
+export { Result, Uitkomst } from "./namespace";
 export { AbstractResult } from "./result";
 export * from "./static";
 

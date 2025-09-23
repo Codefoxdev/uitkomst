@@ -7,15 +7,15 @@ import type {
 } from "uitkomst";
 import type { InferSome, OptionGuard } from "./index";
 import type { Option } from "./option";
-import { AsyncResult, Err, Ok, YieldError } from "uitkomst";
-import { MissingNoneError, None, Some } from "./index";
+import { AsyncResult, Err, Ok, Uitkomst, YieldError } from "uitkomst";
+import { None, Some } from "./index";
 
 export class AsyncOption<A>
   extends Promise<OptionGuard<A>>
   implements
     AsyncYieldable<A, void>,
     Tagged<"AsyncOption">,
-    AsyncResultLike<A, MissingNoneError>
+    AsyncResultLike<A, void>
 {
   readonly _tag = "AsyncOption";
 
@@ -65,11 +65,11 @@ export class AsyncOption<A>
     return this;
   }
 
-  toResult(): AsyncResult<A, MissingNoneError> {
+  toResult<B>(fallback: MaybePromise<B>): AsyncResult<A, B> {
     return AsyncResult.from(
       super.then(async (opt) => {
         if (opt.some) return Ok(opt.unwrap());
-        else return Err(new MissingNoneError());
+        else return Err(await fallback);
       }),
     );
   }
@@ -85,6 +85,10 @@ export class AsyncOption<A>
 
   async unwrap(fallback: MaybePromise<A>): Promise<A> {
     return (await this).unwrap(await fallback);
+  }
+
+  [Uitkomst.toResultSymbol](): AsyncResult<A, void> {
+    return this.toResult<void>(undefined);
   }
 
   async *[Symbol.asyncIterator](this: AsyncOption<A>): AsyncYields<A, void> {
