@@ -2,6 +2,8 @@ import { AsyncResult } from "./async";
 import { Err, Ok } from "./result";
 import * as _static from "./static";
 
+// TODO: Remove this namespace and just use the `Uitkomst` class and not export the static methods seperately.
+// or just via a "uitkomst/static" export and use import * as result from "uitkomst/static"?
 /**
  * @namespace
  * Namespace containing static utility methods for working with Result objects,
@@ -28,6 +30,17 @@ export const Result = {
    */
   AsyncResult: AsyncResult,
 };
+
+export class Uitkomst {
+  private constructor() {}
+
+  static readonly Ok = Ok;
+  static readonly Err = Err;
+  static readonly AsyncResult = AsyncResult;
+
+  static readonly toResultSymbol: unique symbol =
+    Symbol.for("uitkomst/toResult");
+}
 
 /**
  * The `Result` type represents a value that can be either a success (`Ok`) or a failure (`Err`).

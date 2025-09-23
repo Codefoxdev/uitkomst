@@ -6,7 +6,7 @@ import type {
   InferValue,
   MaybePromise,
   Pair,
-  ResultLike,
+  ResultType,
 } from "./types";
 import { AsyncResult, mapAsyncResult } from "./async";
 import { AssertError } from "./error";
@@ -33,10 +33,10 @@ import { Err, Ok } from "./result";
 export function all<C extends Result<any, any>>(
   results: C[],
 ): Result<InferOk<C>[], InferErr<C>>;
-export function all<C extends ResultLike<any, any>>(
+export function all<C extends ResultType<any, any>>(
   results: C[],
 ): AsyncResult<InferOk<C>[], InferErr<C>>;
-export function all<A, B>(results: ResultLike<A, B>[]) {
+export function all<A, B>(results: ResultType<A, B>[]) {
   if (results.length === 0) return new Ok([]);
 
   // Handle if any are async
@@ -64,7 +64,7 @@ export function all<A, B>(results: ResultLike<A, B>[]) {
  * @template C The result type to assert.
  * @returns The unwrapped {@link Ok} value, or never if the result is an {@link Err}.
  */
-export type AssertOk<C extends ResultLike<any, any>> = Unwrap<C>;
+export type AssertOk<C extends ResultType<any, any>> = Unwrap<C>;
 
 /**
  * Asserts that a result is an {@link Ok}, and returns the unwrapped value.
@@ -80,10 +80,10 @@ export type AssertOk<C extends ResultLike<any, any>> = Unwrap<C>;
  * // -> string
  * ```
  */
-export function assertOk<C extends ResultLike<any, any>>(
+export function assertOk<C extends ResultType<any, any>>(
   result: C,
 ): AssertOk<C>;
-export function assertOk<A, B>(result: ResultLike<A, B>) {
+export function assertOk<A, B>(result: ResultType<A, B>) {
   if (AsyncResult.is(result))
     return result
       .unwrapPromise()
@@ -106,7 +106,7 @@ export function assertOk<A, B>(result: ResultLike<A, B>) {
  * @template C The result type to assert.
  * @returns The unwrapped {@link Err} value, or never if the result is an {@link Ok}.
  */
-export type AssertErr<C extends ResultLike<any, any>> = UnwrapErr<C>;
+export type AssertErr<C extends ResultType<any, any>> = UnwrapErr<C>;
 
 /**
  * Asserts that a result is an {@link Err}, and returns the unwrapped value.
@@ -122,10 +122,10 @@ export type AssertErr<C extends ResultLike<any, any>> = UnwrapErr<C>;
  * // -> Error
  * ```
  */
-export function assertErr<C extends ResultLike<any, any>>(
+export function assertErr<C extends ResultType<any, any>>(
   result: C,
 ): AssertErr<C>;
-export function assertErr<A, B>(result: ResultLike<A, B>) {
+export function assertErr<A, B>(result: ResultType<A, B>) {
   if (AsyncResult.is(result))
     return result
       .swap()
@@ -149,12 +149,12 @@ export function assertErr<A, B>(result: ResultLike<A, B>) {
  * @template C The nested result to flatten.
  * @returns The flattened result.
  */
-export type FlattenResult<C extends ResultLike<ResultLike<any, any>, any>> =
+export type FlattenResult<C extends ResultType<ResultType<any, any>, any>> =
   C extends Result<Result<any, any>, any>
     ? Result<InferOk<InferOk<C>>, InferErr<InferOk<C>> | InferErr<C>>
     : C extends Result<AsyncResult<any, any>, any>
       ? AsyncResult<InferOk<InferOk<C>>, InferErr<InferOk<C>> | InferErr<C>>
-      : C extends AsyncResult<ResultLike<any, any>, any>
+      : C extends AsyncResult<ResultType<any, any>, any>
         ? AsyncResult<InferOk<InferOk<C>>, InferErr<InferOk<C>> | InferErr<C>>
         : never;
 
@@ -174,10 +174,10 @@ export type FlattenResult<C extends ResultLike<ResultLike<any, any>, any>> =
  * // -> Err("")
  *```
  */
-export function flatten<C extends ResultLike<ResultLike<any, any>, any>>(
+export function flatten<C extends ResultType<ResultType<any, any>, any>>(
   result: C,
 ): FlattenResult<C>;
-export function flatten<A, B>(result: ResultLike<ResultLike<A, B>, B>) {
+export function flatten<A, B>(result: ResultType<ResultType<A, B>, B>) {
   if (AsyncResult.is(result))
     return mapAsyncResult(result, (res) => (res.ok ? res.unwrap() : res));
 
@@ -232,10 +232,10 @@ export function isErr(result: unknown): result is Err<unknown> {
 export function partition<C extends Result<any, any>>(
   results: C[],
 ): Pair<InferOk<C>[], InferErr<C>[]>;
-export function partition<C extends ResultLike<any, any>>(
+export function partition<C extends ResultType<any, any>>(
   results: C[],
 ): Promise<Pair<InferOk<C>[], InferErr<C>[]>>;
-export function partition<A, B>(results: ResultLike<A, B>[]) {
+export function partition<A, B>(results: ResultType<A, B>[]) {
   if (results.length === 0) return [[], []] as Pair<A[], B[]>;
 
   // Handle if any are async
@@ -264,7 +264,7 @@ export function partition<A, B>(results: ResultLike<A, B>[]) {
  * @template A The type of the fallback value, defaults to `never`.
  */
 export type Unwrap<
-  C extends ResultLike<any, any>,
+  C extends ResultType<any, any>,
   A = never,
 > = C extends Result<any, any>
   ? InferOk<C, A>
@@ -282,7 +282,7 @@ export type Unwrap<
  * @template A The type of the fallback value, defaults to `never`.
  */
 export type UnwrapErr<
-  C extends ResultLike<any, any>,
+  C extends ResultType<any, any>,
   A = never,
 > = C extends Result<any, any> //
   ? InferErr<C, A>
@@ -300,7 +300,7 @@ export type UnwrapErr<
  *
  * @template C The type of the result.
  */
-export type UnwrapBoth<C extends ResultLike<any, any>> =
+export type UnwrapBoth<C extends ResultType<any, any>> =
   | Unwrap<C>
   | UnwrapErr<C>;
 
@@ -318,13 +318,13 @@ export type UnwrapBoth<C extends ResultLike<any, any>> =
  * // -> 2
  * ```
  */
-export function unwrapBoth<C extends ResultLike<any, any>>(
+export function unwrapBoth<C extends ResultType<any, any>>(
   result: C,
 ): InferValue<C>;
 export function unwrapBoth<C extends AsyncResult<any, any>>(
   result: C,
 ): Promise<InferValue<C>>;
-export function unwrapBoth(result: ResultLike<any, any>): MaybePromise<any> {
+export function unwrapBoth(result: ResultType<any, any>): MaybePromise<any> {
   return result._val;
 }
 
@@ -358,10 +358,10 @@ export function unwrapBothUnsafe<A, B>(
  * ```
  */
 export function values<C extends Result<any, any>>(results: C[]): InferOk<C>[];
-export function values<C extends ResultLike<any, any>>(
+export function values<C extends ResultType<any, any>>(
   results: C[],
 ): Promise<InferOk<C>[]>;
-export function values<A, B>(results: ResultLike<A, B>[]) {
+export function values<A, B>(results: ResultType<A, B>[]) {
   // Handle if any are async
   if (arrayAnyAreAsync(results))
     return block(async () => {
@@ -394,10 +394,10 @@ export function values<A, B>(results: ResultLike<A, B>[]) {
 export function errValues<C extends Result<any, any>>(
   results: C[],
 ): InferErr<C>[];
-export function errValues<C extends ResultLike<any, any>>(
+export function errValues<C extends ResultType<any, any>>(
   results: C[],
 ): Promise<InferErr<C>[]>;
-export function errValues<A, B>(results: ResultLike<A, B>[]) {
+export function errValues<A, B>(results: ResultType<A, B>[]) {
   // Handle if any are async
   if (arrayAnyAreAsync(results))
     return block(async () => {
@@ -426,7 +426,7 @@ export function errValues<A, B>(results: ResultLike<A, B>[]) {
 export type WrapFunction<
   C extends Function,
   E = unknown,
-> = ReturnType<C> extends ResultLike<any, any>
+> = ReturnType<C> extends ResultType<any, any>
   ? C
   : ReturnType<C> extends Promise<any>
     ? AsyncResult<Awaited<ReturnType<C>>, E>
