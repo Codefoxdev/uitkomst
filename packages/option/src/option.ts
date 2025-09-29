@@ -1,7 +1,6 @@
 import type { Result, ResultLike, Tagged, Yieldable, Yields } from "uitkomst";
+import type { Option } from "./namespace";
 import { AssertError, Err, Ok, Uitkomst, YieldError } from "uitkomst";
-
-export type Option<A> = Some<A> | None;
 
 export abstract class AbstractOption<A>
   implements Yieldable<A, void>, Tagged<"Option">, ResultLike<A, void>

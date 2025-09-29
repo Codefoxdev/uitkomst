@@ -1,5 +1,6 @@
 export type { InferSome, InferValue } from "./types";
 export { MissingNoneError } from "./error";
+export { Option } from "./namespace";
 export { AbstractOption } from "./option";
 
 import { None as _None, Some as _Some } from "./option";

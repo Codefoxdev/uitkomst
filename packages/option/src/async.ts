@@ -6,7 +6,7 @@ import type {
   Tagged,
 } from "uitkomst";
 import type { InferSome, OptionGuard } from "./index";
-import type { Option } from "./option";
+import type { Option } from "./namespace";
 import { AsyncResult, Err, Ok, Uitkomst, YieldError } from "uitkomst";
 import { None, Some } from "./index";
 
