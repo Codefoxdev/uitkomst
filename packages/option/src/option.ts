@@ -1,6 +1,9 @@
 import type { Result, ResultLike, Tagged, Yieldable, Yields } from "uitkomst";
 import type { Option } from "./namespace";
 import { AssertError, Err, Ok, Uitkomst, YieldError } from "uitkomst";
+import { AsyncOption } from "./async";
+import { ExpectedOptionError } from "./error";
+import { isPromisefn } from "./helper";
 
 export abstract class AbstractOption<A>
   implements Yieldable<A, void>, Tagged<"Option">, ResultLike<A, void>
@@ -30,13 +33,52 @@ export abstract class AbstractOption<A>
 
   abstract lazyOr(callback: () => Option<A>): Option<A>;
   abstract lazyUnwrap(callback: () => A): A;
-  // TODO: Add async support
-  abstract map<B>(callback: (val: A) => B): Option<B>;
+  abstract map<B>(callback: (val: Awaited<A>) => B): Option<B>;
   abstract or(other: Option<A>): Option<A>;
   abstract tap(callback: (val: Awaited<A>) => void): Option<A>;
   abstract toResult<B>(fallback: B): Result<A, B>;
   // TODO: Add async support
-  abstract try<B>(callback: (val: A) => Option<B>): Option<B>;
+  try<C extends Tagged<"Option"> | Promise<Tagged<"Option">>>(
+    callback: (val: A) => C,
+  ): C extends Promise<infer P>
+    ? P extends AbstractOption<infer B>
+      ? AsyncOption<B>
+      : never
+    : C extends AbstractOption<infer B>
+      ? A extends Promise<any>
+        ? AsyncOption<B>
+        : Option<B>
+      : never {
+    return (() => {
+      if (this.none)
+        if (isPromisefn(callback)) return AsyncOption.None;
+        else return this;
+
+      const validate = (val: any): Option<any> => {
+        if (val instanceof AbstractOption) return val as Option<any>;
+        throw new ExpectedOptionError(val);
+      };
+
+      if (this._val instanceof Promise)
+        return AsyncOption.from(this._val.then(callback).then(validate));
+
+      const res = callback(this._val);
+      if (res instanceof AsyncOption) return res;
+      else if (res instanceof Promise)
+        return AsyncOption.from(res.then(validate));
+      else if (res instanceof AbstractOption) return res;
+
+      throw new ExpectedOptionError(res);
+    })() as C extends Promise<infer P>
+      ? P extends AbstractOption<infer B>
+        ? AsyncOption<B>
+        : never
+      : C extends AbstractOption<infer B>
+        ? A extends Promise<any>
+          ? AsyncOption<B>
+          : Option<B>
+        : never;
+  }
 
   abstract unwrap(fallback: A): A;
 
@@ -77,8 +119,11 @@ export class Some<A> extends AbstractOption<A> {
     return this.unwrap();
   }
 
-  override map<B>(callback: (val: A) => B): Option<B> {
-    const val = callback(this._val);
+  override map<B>(callback: (val: Awaited<A>) => B): Option<B> {
+    if (this._val instanceof Promise)
+      return new Some(this._val.then((v) => callback(v))) as Option<B>;
+
+    const val = callback(this._val as Awaited<A>);
     return new Some(val);
   }
 
@@ -95,10 +140,6 @@ export class Some<A> extends AbstractOption<A> {
 
   override toResult(): Ok<A> {
     return Ok(this._val);
-  }
-
-  override try<B>(callback: (val: A) => Option<B>): Option<B> {
-    return callback(this._val);
   }
 
   override unwrap(): A {
@@ -148,10 +189,6 @@ export class None extends AbstractOption<never> {
 
   override toResult<B>(fallback: B): Err<B> {
     return Err(fallback);
-  }
-
-  override try(): None {
-    return this;
   }
 
   override unwrap<A>(fallback: A): A {

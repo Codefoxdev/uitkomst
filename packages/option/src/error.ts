@@ -14,3 +14,17 @@ export class MissingNoneError
     );
   }
 }
+
+export class ExpectedOptionError
+  extends Error
+  implements Tagged<"ExpectedOptionError">
+{
+  override readonly name = "ExpectedOptionError";
+  readonly _tag = "ExpectedOptionError";
+
+  constructor(readonly val: any) {
+    super(
+      `Expected the received value to be a option${val?._tag ? ", but received an object tagged with " + val._tag.toString() : ""}`,
+    );
+  }
+}
