@@ -599,15 +599,27 @@ export async function wrapAsync<A, E = Error>(
  * ```
  */
 export function use<A, B>(callback: () => Generator<B, A, never>): Result<A, B>;
+export function use<A, B, C>(
+  callback: (this: C) => Generator<B, A, never>,
+  thisArg: C,
+): Result<A, B>;
 export function use<A, B>(
   callback: () => AsyncGenerator<B, A, never>,
 ): AsyncResult<A, B>;
+export function use<A, B, C>(
+  callback: (this: C) => AsyncGenerator<B, A, never>,
+  thisArg: C,
+): AsyncResult<A, B>;
 export function use<A, B>(
   callback: () => Generator<B, A, never> | AsyncGenerator<B, A, never>,
-): Result<A, B> | AsyncResult<A, B> {
-  const res = callback().next();
+  thisArg?: unknown,
+): ResultGuard<A, B> | AsyncResult<A, B> {
+  const res = callback.call(thisArg).next();
   if (!(res instanceof Promise))
-    return res.done ? new Ok(res.value) : new Err(res.value);
+    return (res.done ? new Ok(res.value) : new Err(res.value)) as ResultGuard<
+      A,
+      B
+    >;
 
   return AsyncResult.from(
     res.then((awaited) =>
