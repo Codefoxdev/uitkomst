@@ -1,4 +1,4 @@
-import type { Result } from "./namespace";
+import type { Result, ResultGuard } from "./namespace";
 import type {
   InferErr,
   InferOk,
@@ -175,10 +175,10 @@ export abstract class AbstractResult<A, B>
       : never
     : C extends AbstractResult<infer _Ok, infer _Err>
       ? [A] extends [never]
-        ? Result<InferOk<C>, InferErr<C> | B>
+        ? ResultGuard<InferOk<C>, InferErr<C> | B>
         : [A] extends [Promise<any>]
           ? AsyncResult<InferOk<C>, InferErr<C> | B>
-          : Result<InferOk<C>, InferErr<C> | B>
+          : ResultGuard<InferOk<C>, InferErr<C> | B>
       : never {
     return (() => {
       if (this.err) {
@@ -209,10 +209,10 @@ export abstract class AbstractResult<A, B>
         : never
       : C extends AbstractResult<infer _Ok, infer _Err>
         ? [A] extends [never]
-          ? Result<InferOk<C>, InferErr<C> | B>
+          ? ResultGuard<InferOk<C>, InferErr<C> | B>
           : [A] extends [Promise<any>]
             ? AsyncResult<InferOk<C>, InferErr<C> | B>
-            : Result<InferOk<C>, InferErr<C> | B>
+            : ResultGuard<InferOk<C>, InferErr<C> | B>
         : never;
   }
 
@@ -231,10 +231,10 @@ export abstract class AbstractResult<A, B>
       : never
     : C extends AbstractResult<infer _Ok, infer _Err>
       ? [B] extends [never]
-        ? Result<InferOk<C> | A, InferErr<C>>
+        ? ResultGuard<InferOk<C> | A, InferErr<C>>
         : [B] extends [Promise<any>]
           ? AsyncResult<InferOk<C> | A, InferErr<C>>
-          : Result<InferOk<C> | A, InferErr<C>>
+          : ResultGuard<InferOk<C> | A, InferErr<C>>
       : never {
     return (() => {
       if (this.ok) {
@@ -265,10 +265,10 @@ export abstract class AbstractResult<A, B>
         : never
       : C extends AbstractResult<infer _Ok, infer _Err>
         ? [B] extends [never]
-          ? Result<InferOk<C> | A, InferErr<C>>
+          ? ResultGuard<InferOk<C> | A, InferErr<C>>
           : [B] extends [Promise<any>]
             ? AsyncResult<InferOk<C> | A, InferErr<C>>
-            : Result<InferOk<C> | A, InferErr<C>>
+            : ResultGuard<InferOk<C> | A, InferErr<C>>
         : never;
   }
 
