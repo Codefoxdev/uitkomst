@@ -9,19 +9,25 @@ export type {
   WrapFunction,
 } from "./static";
 export type {
+  AsyncResultLike,
+  AsyncYieldable,
   AsyncYields,
   InferErr,
   InferOk,
   InferValue,
+  MaybePromise,
   Pair,
   ResultLike,
+  ResultType,
   Tag,
   Tagged,
+  Trace,
+  Yieldable,
   Yields,
 } from "./types";
 export { AsyncResult } from "./async";
-export { AssertError } from "./error";
-export { Result } from "./namespace";
+export { AssertError, ExpectedResultError, YieldError } from "./error";
+export { Result, Uitkomst } from "./namespace";
 export { AbstractResult } from "./result";
 export * from "./static";
 
